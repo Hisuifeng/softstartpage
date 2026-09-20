@@ -25,20 +25,46 @@
             return light ? 'light' : 'black';
         },
 
-        /** HEAD 探测某一主题目录下可用的 wallpaper{N}.jpg 列表 */
-        async _probeTheme(dir) {
-            const list = [];
-            for (let i = 0; i < 50; i++) {
+        /**
+         * 随机挑选当前主题目录下【真实存在】的一张默认壁纸。
+         *
+         * 【关键改动】先随机确定【单个】索引 → 只对该 URL 发【一次】请求，
+         * 并校验\"响应的 Content-Type 以 image/ 开头\"才算命中：
+         *
+         *   · GitHub Pages：不存在的 wallpaper{N}.jpg → 真 404 → 不通过，
+         *     换下一个随机索引重试。
+         *   · Cloudflare Pages（SPA fallback 开启）：不存在的资源会被兜底成
+         *     200 + text/html 的 index.html（HEAD 的 .ok 会误判成\"壁纸存在\"）。
+         *     因此这里不信任 HEAD/.ok，改为校验 Content-Type 必须 image/* ——
+         *     SPA 兜底页是 text/html，即使 200 也过不了 image/ 校验，
+         *     自然被排除，绝不会被当成壁纸塞进候选列表。
+         *
+         * 相比旧版\"HEAD 连发最多 50 个去探测存在哪些\"（在 SPA fallback 下
+         * 会把 50 个不存在的都探测成\"存在\"、列表塞满兜底页），本次：
+         *   - 每次随机只发 1 个请求（命中即停），不会对整目录连发探测；
+         *   - 判定依据由\"HTTP 200\"改为\"真图片 Content-Type\"，对托管形态免疫。
+         *
+         * @param {string} dir 'light' | 'black'
+         * @returns {Promise<string|null>} 壁纸 URL；探测不到返回 null
+         */
+        async _randomWallpaper(dir) {
+            const count = App.Utils.load('sp_theme_wallpaper_count', 8) || 8;
+            const maxAttempts = 6;
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const i = Math.floor(Math.random() * count);
                 const url = `img/wallpaper/${dir}/wallpaper${i}.jpg`;
-                let ok = false;
-                try { ok = (await fetch(url, { method: 'HEAD' })).ok; } catch (e) { ok = false; }
-                if (!ok) break;
-                list.push(url);
+                let isImage = false;
+                try {
+                    const res = await fetch(url, { method: 'HEAD' });
+                    const type = (res.headers.get('content-type') || '').toLowerCase();
+                    isImage = res.ok && type.startsWith('image/');
+                } catch (e) { isImage = false; }
+                if (isImage) return url;
             }
-            return list;
+            return null;
         },
 
-        /** 未设置壁纸时：随机选用当前主题的默认壁纸 */
+        /** 未设置壁纸时：随机选用当前主题的真实默认壁纸（只发一次请求） */
         _applyDefaultForTheme() {
             if (!this.layer) return;
             const dir = this._themeDir();
@@ -47,9 +73,8 @@
                 this.layer.classList.add('hidden');
             };
 
-            const render = (list) => {
-                if (!list || !list.length) { hide(); return; }
-                const url = list[Math.floor(Math.random() * list.length)];
+            const render = (url) => {
+                if (!url) { hide(); return; }
                 this.layer.style.backgroundImage = `url('${url}')`;
                 this.layer.classList.remove('hidden');
             };
@@ -57,14 +82,12 @@
             if (this._defaults[dir]) {
                 render(this._defaults[dir]);
             } else {
-                this._probeTheme(dir)
-                    .then(list => {
-                        this._defaults[dir] = list;
-                        // 探测期间用户可能已设置壁纸
-                        if (this.wallpaper.type === 'none') render(list);
-                        else if (!this.wallpaper.type) hide();
-                    })
-                    .catch(() => hide());
+                this._randomWallpaper(dir).then(url => {
+                    this._defaults[dir] = url;
+                    // 探测期间用户可能已设置壁纸
+                    if (this.wallpaper.type === 'none') render(url);
+                    else if (!this.wallpaper.type) hide();
+                }).catch(() => hide());
             }
         },
 
