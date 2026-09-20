@@ -1,0 +1,1462 @@
+/* ========== 主题变量 ========== */
+:root {
+    --bg-deep: #0a0e17;
+    --bg-surface: rgba(20, 25, 35, 0.65);
+    --bg-surface-hover: rgba(30, 36, 48, 0.8);
+    --text-primary: #e8eaed;
+    --text-secondary: #9aa0a6;
+    --text-tertiary: #6b7280;
+    --glass-bg: rgba(20, 25, 35, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-hover: rgba(30, 36, 48, 0.8);
+    --accent: #8ab4f8;
+    --accent-dim: rgba(138, 180, 248, 0.25);
+    --accent-strong: rgba(138, 180, 248, 0.5);
+    --danger: #f87171;
+    --danger-dim: rgba(248, 113, 113, 0.2);
+    --bookmark-bg: rgba(22, 27, 38, 0.7);
+    --bookmark-hover: rgba(35, 42, 56, 0.85);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.6);
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 22px;
+    --radius-xl: 50px;
+    --transition-fast: 0.18s ease;
+    --transition-smooth: 0.3s ease;
+
+    --suggestions-bg: rgba(18, 23, 35, 0.85);
+    --suggestions-border: rgba(255, 255, 255, 0.1);
+    --suggestions-hover: rgba(138, 180, 248, 0.12);
+    --suggestion-badge-bg: rgba(255, 255, 255, 0.06);
+
+    --input-bg: rgba(255, 255, 255, 0.05);
+    --input-border: rgba(255, 255, 255, 0.1);
+    --btn-bg: rgba(255, 255, 255, 0.04);
+    --btn-border: rgba(255, 255, 255, 0.15);
+    --btn-hover-bg: rgba(255, 255, 255, 0.1);
+    --btn-primary-bg: rgba(138, 180, 248, 0.2);
+    --btn-primary-border: rgba(138, 180, 248, 0.4);
+    --btn-danger-bg: rgba(248, 113, 113, 0.1);
+
+    --engine-btn-bg: rgba(255, 255, 255, 0.03);
+    --engine-btn-border: transparent;
+    --engine-btn-hover-bg: rgba(255, 255, 255, 0.07);
+    --engine-btn-hover-border: rgba(255, 255, 255, 0.1);
+    --engine-btn-active-bg: rgba(138, 180, 248, 0.2);
+    --engine-btn-active-border: rgba(138, 180, 248, 0.45);
+
+    --toggle-bg: rgba(255, 255, 255, 0.1);
+    --toggle-border: rgba(255, 255, 255, 0.1);
+    --select-bg: rgba(255, 255, 255, 0.04);
+    --select-border: rgba(255, 255, 255, 0.08);
+    --select-hover-bg: rgba(255, 255, 255, 0.08);
+    --select-option-bg: #1a1f2b;
+    --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+    --toast-bg: rgba(30, 36, 50, 0.9);
+    --overlay-bg: rgba(0, 0, 0, 0.55);
+    --settings-panel-bg: rgba(20, 25, 38, 0.94);
+    --settings-row-bg: rgba(255, 255, 255, 0.02);
+    --history-clear-border: rgba(255, 255, 255, 0.06);
+    --file-upload-label-bg: rgba(255, 255, 255, 0.04);
+    --file-upload-label-border: rgba(255, 255, 255, 0.15);
+    --file-upload-label-hover-bg: rgba(255, 255, 255, 0.1);
+
+    /* 粒子颜色变量 */
+    --particle-color: rgba(160, 190, 225, 0.28);
+    --particle-glow-start: rgba(200, 215, 240, 0.7);
+    --particle-glow-mid: rgba(170, 195, 225, 0.35);
+    --particle-glow-end: rgba(140, 170, 210, 0);
+    --particle-core: rgba(215, 225, 245, 0.6);
+
+    /* 天气图表颜色变量 */
+    --temp-color: #f87171;
+    --feel-color: #8ab4f8;
+    --precip-color: rgba(74, 108, 247, 0.5);
+    --grid-color: rgba(128, 128, 128, 0.15);
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        --bg-deep: #f0f2f5;
+        --bg-surface: rgba(255, 255, 255, 0.75);
+        --bg-surface-hover: rgba(255, 255, 255, 0.9);
+        --text-primary: #1a1a2e;
+        --text-secondary: #555770;
+        --text-tertiary: #8889a0;
+        --glass-bg: rgba(255, 255, 255, 0.75);
+        --glass-border: rgba(0, 0, 0, 0.06);
+        --glass-hover: rgba(255, 255, 255, 0.9);
+        --accent: #4a6cf7;
+        --accent-dim: rgba(74, 108, 247, 0.2);
+        --accent-strong: rgba(74, 108, 247, 0.4);
+        --danger: #e53e3e;
+        --danger-dim: rgba(229, 62, 62, 0.15);
+        --bookmark-bg: rgba(255, 255, 255, 0.8);
+        --bookmark-hover: rgba(255, 255, 255, 0.95);
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+        --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.1);
+        --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.12);
+
+        --suggestions-bg: rgba(255, 255, 255, 0.9);
+        --suggestions-border: rgba(0, 0, 0, 0.08);
+        --suggestions-hover: rgba(74, 108, 247, 0.1);
+        --suggestion-badge-bg: rgba(0, 0, 0, 0.06);
+
+        --input-bg: rgba(0, 0, 0, 0.03);
+        --input-border: rgba(0, 0, 0, 0.1);
+        --btn-bg: rgba(0, 0, 0, 0.04);
+        --btn-border: rgba(0, 0, 0, 0.12);
+        --btn-hover-bg: rgba(0, 0, 0, 0.08);
+        --btn-primary-bg: rgba(74, 108, 247, 0.15);
+        --btn-primary-border: rgba(74, 108, 247, 0.35);
+        --btn-danger-bg: rgba(229, 62, 62, 0.1);
+
+        --engine-btn-bg: rgba(0, 0, 0, 0.03);
+        --engine-btn-border: transparent;
+        --engine-btn-hover-bg: rgba(0, 0, 0, 0.06);
+        --engine-btn-hover-border: rgba(0, 0, 0, 0.1);
+        --engine-btn-active-bg: rgba(74, 108, 247, 0.15);
+        --engine-btn-active-border: rgba(74, 108, 247, 0.35);
+
+        --toggle-bg: rgba(0, 0, 0, 0.1);
+        --toggle-border: rgba(0, 0, 0, 0.1);
+        --select-bg: rgba(0, 0, 0, 0.03);
+        --select-border: rgba(0, 0, 0, 0.1);
+        --select-hover-bg: rgba(0, 0, 0, 0.06);
+        --select-option-bg: #ffffff;
+        --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+        --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+        --toast-bg: rgba(255, 255, 255, 0.9);
+        --overlay-bg: rgba(0, 0, 0, 0.3);
+        --settings-panel-bg: rgba(255, 255, 255, 0.95);
+        --settings-row-bg: rgba(0, 0, 0, 0.02);
+        --history-clear-border: rgba(0, 0, 0, 0.06);
+        --file-upload-label-bg: rgba(0, 0, 0, 0.03);
+        --file-upload-label-border: rgba(0, 0, 0, 0.12);
+        --file-upload-label-hover-bg: rgba(0, 0, 0, 0.06);
+
+        --particle-color: rgba(80, 100, 140, 0.25);
+        --particle-glow-start: rgba(100, 120, 160, 0.7);
+        --particle-glow-mid: rgba(120, 140, 180, 0.3);
+        --particle-glow-end: rgba(140, 160, 200, 0);
+        --particle-core: rgba(80, 100, 140, 0.5);
+
+        --temp-color: #d44;
+        --feel-color: #3b82f6;
+        --precip-color: rgba(59, 130, 246, 0.4);
+        --grid-color: rgba(0, 0, 0, 0.1);
+    }
+}
+
+/* ========== 全局 ========== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: transparent;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* 动画 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes blinkColon {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.25;
+    }
+}
+
+@keyframes dropdownIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 壁纸 */
+#wallpaper-layer {
+    position: fixed;
+    /* 参与视差时：四周外扩 --parallax-pad（= data-parallax-max）像素，
+       背景 cover 居中裁切，视觉不变，但平移最远时不会露出页面背景 */
+    top: calc(-1 * var(--parallax-pad, 0px));
+    left: calc(-1 * var(--parallax-pad, 0px));
+    width: calc(100% + 2 * var(--parallax-pad, 0px));
+    height: calc(100% + 2 * var(--parallax-pad, 0px));
+    z-index: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: opacity 0.5s ease;
+    opacity: 1;
+    will-change: transform;
+}
+
+#wallpaper-layer.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 粒子 */
+#particle-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* 主容器 */
+.main-container {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.main-container>* {
+    pointer-events: auto;
+}
+
+/* 时间 */
+.time-section {
+    text-align: center;
+    margin-bottom: 28px;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    animation: fadeInUp 0.8s ease-out both;
+    animation-delay: 0.05s;
+}
+
+.time-section:hover {
+    opacity: 0.8;
+}
+
+.clock {
+    font-size: clamp(3.2rem, 8vw, 5.6rem);
+    font-weight: 200;
+    letter-spacing: 0.03em;
+    color: var(--text-primary);
+    text-shadow: 0 0 60px var(--accent-dim);
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Pro Display', monospace;
+}
+
+.colon {
+    animation: blinkColon 1s step-end infinite;
+    display: inline-block;
+    width: 0.5em;
+    text-align: center;
+}
+
+.date-text {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-top: 6px;
+}
+
+/* 搜索 */
+.search-section {
+    width: 100%;
+    max-width: 580px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    animation: fadeInUp 0.8s ease-out both;
+    animation-delay: 0.15s;
+}
+
+.search-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1.5px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    transition: all var(--transition-smooth);
+    z-index: 10;
+}
+
+.search-wrapper:focus-within {
+    border-color: var(--accent-strong);
+    box-shadow: 0 0 0 6px var(--accent-dim);
+    background: var(--bg-surface-hover);
+}
+
+.search-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    opacity: 0.6;
+}
+
+.search-wrapper:focus-within .search-icon {
+    opacity: 0.9;
+}
+
+.search-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--text-primary);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.search-input {
+    flex: 1;
+    height: 50px;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 1.05rem;
+    padding: 0 16px 0 6px;
+    font-family: inherit;
+    min-width: 0;
+}
+
+.search-input::placeholder {
+    color: var(--text-tertiary);
+}
+
+.search-clear {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: var(--btn-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    opacity: 0;
+    transform: scale(0.7);
+    transition: all var(--transition-fast);
+    pointer-events: none;
+    font-size: 1.1rem;
+}
+
+.search-clear.visible {
+    opacity: 0.7;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+.search-clear:hover {
+    opacity: 1;
+    background: var(--btn-hover-bg);
+    color: var(--text-primary);
+}
+
+/* 建议下拉 */
+.suggestions-dropdown {
+    width: 100%;
+    background: var(--suggestions-bg);
+    backdrop-filter: blur(30px) saturate(1.2);
+    -webkit-backdrop-filter: blur(30px) saturate(1.2);
+    border: 1px solid var(--suggestions-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    z-index: 15;
+    overflow-y: auto;
+    transition: max-height 0.25s ease, padding 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    max-height: 0;
+    padding: 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    animation: dropdownIn 0.25s ease-out;
+}
+
+.suggestions-dropdown::-webkit-scrollbar {
+    display: none;
+}
+
+.suggestions-dropdown.active {
+    padding: 6px 0;
+}
+
+.suggestion-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.15s;
+    margin: 2px 6px;
+    border-radius: 10px;
+}
+
+.suggestion-item:hover,
+.suggestion-item.active {
+    background: var(--suggestions-hover);
+    color: var(--text-primary);
+}
+
+.suggestion-item .sug-icon {
+    width: 18px;
+    height: 18px;
+    opacity: 0.45;
+    flex-shrink: 0;
+}
+
+.suggestion-item .sug-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.suggestion-item .sug-badge {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--suggestion-badge-bg);
+    color: var(--text-tertiary);
+}
+
+.suggestion-item.no-results {
+    justify-content: center;
+    color: var(--text-tertiary);
+    pointer-events: none;
+}
+
+.btn-delete-history {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    opacity: 0.5;
+}
+
+.btn-delete-history:hover {
+    opacity: 1;
+    color: var(--danger);
+    background: var(--danger-dim);
+}
+
+.history-clear-all {
+    border-top: 1px solid var(--history-clear-border);
+    padding: 10px 18px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.history-clear-all:hover {
+    color: var(--danger);
+    background: var(--danger-dim);
+}
+
+.bookmarks-section.hidden-by-suggestions {
+    display: none !important;
+}
+
+/* 搜索引擎按钮 */
+.engine-switcher {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.engine-btn {
+    padding: 9px 18px;
+    border-radius: 20px;
+    border: 1.5px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
+    font-family: inherit;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--shadow-sm);
+}
+
+.engine-btn:hover {
+    background: var(--glass-hover);
+    border-color: var(--accent-strong);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-md), 0 0 20px var(--accent-dim);
+    transform: translateY(-1px);
+}
+
+.engine-btn:active {
+    transform: scale(0.95);
+    transition: transform 0.1s ease;
+}
+
+.engine-btn.active {
+    background: var(--accent-dim);
+    border-color: var(--accent-strong);
+    color: var(--accent);
+    font-weight: 500;
+    box-shadow: 0 0 16px var(--accent-dim);
+}
+
+/* 书签 */
+.bookmarks-section {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: clamp(10px, 2vw, 18px);
+    margin-top: 30px;
+    max-width: 620px;
+    width: 100%;
+    animation: fadeInUp 0.8s ease-out both;
+    animation-delay: 0.28s;
+}
+
+.bookmark-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    padding: 10px 6px;
+    border-radius: var(--radius-md);
+    min-width: 66px;
+    transition: all var(--transition-smooth);
+}
+
+.bookmark-item:hover {
+    color: var(--text-primary);
+    transform: translateY(-5px);
+}
+
+.bookmark-icon-wrapper {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--bookmark-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+}
+
+.bookmark-item:hover .bookmark-icon-wrapper {
+    border-color: var(--accent-strong);
+}
+
+.bookmark-icon-wrapper img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    z-index: 1;
+}
+
+.bookmark-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    opacity: 0.55;
+    z-index: 0;
+}
+
+.bookmark-name {
+    font-size: 0.75rem;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 设置按钮 */
+.settings-fab {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 30;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1.5px solid var(--glass-border);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    transition: all var(--transition-smooth);
+    font-size: 1.2rem;
+}
+
+.settings-fab:hover {
+    background: var(--glass-hover);
+    color: var(--text-primary);
+    transform: rotate(30deg) scale(1.05);
+}
+
+/* 设置面板 */
+.settings-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: var(--overlay-bg);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.settings-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.settings-panel {
+    background: var(--settings-panel-bg);
+    backdrop-filter: blur(30px);
+    border-radius: var(--radius-lg);
+    max-width: 560px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateY(30px) scale(0.96);
+    transition: transform 0.3s;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-xl);
+}
+
+.settings-overlay.open .settings-panel {
+    transform: translateY(0) scale(1);
+}
+
+.settings-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.settings-panel-header h2 {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+}
+
+.settings-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    background: var(--btn-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.settings-close-btn:hover {
+    background: var(--btn-hover-bg);
+    color: var(--text-primary);
+}
+
+.settings-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.settings-panel-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.settings-panel-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.settings-panel-body::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 10px;
+}
+
+.settings-panel-body::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+.settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-group-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    font-weight: 600;
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--settings-row-bg);
+    border-radius: var(--radius-sm);
+}
+
+.settings-row-label {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+/* 开关 */
+.toggle-switch {
+    position: relative;
+    width: 46px;
+    height: 26px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--toggle-bg);
+    border-radius: 26px;
+    border: 1px solid var(--toggle-border);
+    transition: all var(--transition-smooth);
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    left: 2px;
+    top: 2px;
+    background: #fff;
+    border-radius: 50%;
+    transition: all var(--transition-smooth);
+}
+
+.toggle-switch input:checked+.toggle-slider {
+    background: var(--accent-strong);
+    border-color: var(--accent-strong);
+}
+
+.toggle-switch input:checked+.toggle-slider::before {
+    transform: translateX(20px);
+    background: var(--accent);
+}
+
+/* 下拉选择 */
+.settings-select {
+    padding: 10px 36px 10px 14px;
+    border-radius: 12px;
+    background: var(--select-bg);
+    border: 1px solid var(--select-border);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa0a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    min-width: 140px;
+    box-shadow: var(--shadow-sm);
+}
+
+.settings-select:hover {
+    background-color: var(--select-hover-bg);
+    border-color: var(--accent-strong);
+}
+
+.settings-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.settings-select option {
+    background: var(--select-option-bg);
+    color: var(--text-primary);
+}
+
+/* 输入 */
+.settings-input {
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    outline: none;
+    flex: 1;
+    min-width: 80px;
+}
+
+.settings-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* 按钮 */
+.btn {
+    padding: 9px 18px;
+    border-radius: 20px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all var(--transition-fast);
+}
+
+.btn:hover {
+    background: var(--btn-hover-bg);
+}
+
+.btn.primary {
+    background: var(--btn-primary-bg);
+    border-color: var(--btn-primary-border);
+    color: var(--accent);
+    font-weight: 500;
+}
+
+.btn.primary:hover {
+    background: var(--accent-strong);
+}
+
+.btn.danger {
+    color: var(--danger);
+}
+
+.btn.danger:hover {
+    background: var(--btn-danger-bg);
+}
+
+.btn-icon-danger {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--btn-danger-bg);
+    color: var(--danger);
+    cursor: pointer;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon-danger:hover {
+    background: var(--danger-dim);
+}
+
+/* 书签编辑 */
+.bookmark-edit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bookmark-edit-item {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.btn-add-bookmark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border: 2px dashed var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.btn-add-bookmark:hover {
+    border-color: var(--accent-strong);
+    background: var(--accent-dim);
+    color: var(--accent);
+}
+
+.settings-panel-footer {
+    padding: 16px 22px;
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* 壁纸 */
+.wallpaper-preview {
+    width: 100%;
+    height: 120px;
+    border-radius: 12px;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid var(--glass-border);
+    margin-top: 6px;
+}
+
+.wallpaper-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.file-upload-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--file-upload-label-border);
+    background: var(--file-upload-label-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all var(--transition-fast);
+}
+
+.file-upload-label:hover {
+    background: var(--file-upload-label-hover-bg);
+    color: var(--text-primary);
+}
+
+.file-upload-input {
+    display: none;
+}
+
+/* 世界时钟 */
+.world-clock-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: var(--overlay-bg);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.world-clock-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.world-clock-panel {
+    background: var(--settings-panel-bg);
+    backdrop-filter: blur(30px);
+    border-radius: var(--radius-lg);
+    max-width: 520px;
+    width: 100%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateY(30px) scale(0.96);
+    transition: transform 0.3s;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-xl);
+}
+
+.world-clock-overlay.open .world-clock-panel {
+    transform: translateY(0) scale(1);
+}
+
+.world-clock-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.world-clock-header h2 {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+}
+
+.world-clock-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.world-clock-add {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.timezone-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.timezone-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--settings-row-bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+}
+
+.tz-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.tz-name {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.tz-name:hover {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.tz-time {
+    font-size: 1.3rem;
+    font-weight: 300;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.tz-date {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 60;
+    padding: 10px 22px;
+    border-radius: 24px;
+    background: var(--toast-bg);
+    backdrop-filter: blur(16px);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.toast.show {
+    opacity: 1;
+}
+
+/* 拖拽相关样式 */
+.bookmark-edit-item.dragging {
+    opacity: 0.4;
+    border: 2px dashed var(--accent-strong);
+    border-radius: var(--radius-sm);
+}
+
+.bookmark-edit-item.drag-over {
+    border-top: 2px solid var(--accent);
+}
+
+/* 自定义引擎列表 */
+.custom-engines-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.custom-engine-item {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.custom-engine-item .settings-input {
+    flex: 1;
+}
+
+/* 天气按钮 */
+.weather-fab {
+    position: fixed;
+    bottom: 28px;
+    left: 28px;
+    z-index: 30;
+    padding: 12px 18px;
+    border-radius: 40px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1.5px solid var(--glass-border);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    transition: all var(--transition-smooth);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.weather-fab:hover {
+    background: var(--glass-hover);
+    border-color: var(--accent-strong);
+    box-shadow: var(--shadow-lg), 0 0 20px var(--accent-dim);
+    transform: translateY(-2px);
+}
+
+.weather-fab-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* 天气详情面板 */
+.weather-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: var(--overlay-bg);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.weather-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.weather-panel {
+    background: var(--settings-panel-bg);
+    backdrop-filter: blur(30px);
+    border-radius: var(--radius-lg);
+    max-width: 800px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateY(30px) scale(0.96);
+    transition: transform 0.3s;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-xl);
+}
+
+.weather-overlay.open .weather-panel {
+    transform: translateY(0) scale(1);
+}
+
+.weather-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.weather-panel-header h2 {
+    font-size: 1.2rem;
+    color: var(--text-primary);
+}
+
+.weather-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.weather-main-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.weather-main-info .info-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--settings-row-bg);
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.info-item strong {
+    color: var(--text-primary);
+    margin-right: 4px;
+}
+
+/* 图例 */
+.weather-chart-legend {
+    display: flex;
+    gap: 20px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    background: var(--settings-row-bg);
+    border-radius: 20px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+/* 图表容器（禁止滚动） */
+.weather-chart-scroll {
+    background: var(--settings-row-bg);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.weather-chart-container {
+    overflow: hidden !important;
+    /* 彻底禁止任何滚动条 */
+    position: relative;
+}
+
+#weatherChartCanvas {
+    display: block;
+}
+
+/* Tooltip */
+.chart-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--toast-bg);
+    backdrop-filter: blur(12px);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    display: none;
+    white-space: nowrap;
+    box-shadow: var(--shadow-md);
+    z-index: 20;
+    /* 不使用 transform，避免位置偏移 */
+}
+
+/* 雨滴画布置于粒子层之上，内容层之下 */
+#rain-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    /* 与主容器同级，但 DOM 中先于主容器，故被主容器覆盖，实际介于粒子(1) 和 主容器之间 */
+    pointer-events: none;
+}
+
+/* ========== 扁平 SVG 图标（内联注入，本地 file:// 可用） ========== */
+.svg-icon {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    vertical-align: middle;
+    line-height: 0;
+}
+
+.svg-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* 图标尺寸与间距（按使用场景微调） */
+.settings-group-label .svg-icon,
+.file-upload-label .svg-icon,
+.suggestion-item.no-results .svg-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 5px;
+}
+
+.settings-panel-header h2 .svg-icon,
+.world-clock-header h2 .svg-icon,
+.weather-panel-header h2 .svg-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+}
+
+.settings-fab .svg-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.weather-fab #weatherFabIcon .svg-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.weather-main-info .svg-icon {
+    width: 18px;
+    height: 18px;
+    margin-right: 3px;
+    vertical-align: -3px;
+}
+
+.search-clear .svg-icon,
+.settings-close-btn .svg-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.btn-delete-history .svg-icon,
+.btn-icon-danger .svg-icon {
+    width: 13px;
+    height: 13px;
+}
+
+.chart-tooltip .svg-icon {
+    width: 14px;
+    height: 14px;
+    margin-right: 3px;
+}

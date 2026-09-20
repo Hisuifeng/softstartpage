@@ -1,0 +1,33 @@
+// 启动雨效（强度 1-10，例如中雨 6）
+App.Weather.startEffect('rain', 6);
+
+// 启动雪效（强度 1-10，例如中雪 5）
+App.Weather.startEffect('snow', 5);
+
+// 停止当前效果
+App.Weather.stopEffect();
+
+// 查看当前状态
+console.log('效果类型:', App.Weather.currentEffectType, '强度:', App.Weather.currentEffectIntensity);
+
+// 模拟亮色主题
+App.Weather.isDarkTheme = false;
+App.Weather.startEffect('rain', 6); // 重新启动，使颜色生效
+
+// 恢复暗色主题
+App.Weather.isDarkTheme = true;
+App.Weather.startEffect('rain', 6);
+
+// 模拟小雨（代码 61）
+App.Weather._applyEffectByCode(61);
+
+// 模拟大雪（代码 75）
+App.Weather._applyEffectByCode(75);
+
+// 关闭天气效果
+App.state.weatherEffectEnabled = false;
+App.Weather.stopEffect();
+
+// 打开并恢复效果（需先有天气数据，可手动调用更新）
+App.state.weatherEffectEnabled = true;
+App.Weather.updateWeatherFab(); // 重新获取天气并启动对应效果

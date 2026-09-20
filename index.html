@@ -1,128 +1,266 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 
 <head>
-    <meta charset="utf-8">
-    <link rel="icon" href="images/favicon.png">
-    <title>轻-soft起始页</title>
-    <link rel="stylesheet" type="text/css" href="index.css">
-    <script id="s2" type="text/javascript" src=""></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="img/favicon.png">
+    <title>轻-soft 起始页</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 
-<body id="body">
-    <div id="background"></div>
-    <button class="time_bar button" onclick="window.location.href='https://time.is/'">
-        <div class="time">
-            <p id="time_min">00:00</p>
+<body>
+    <div id="wallpaper-layer" class="hidden" data-parallax="1.2" data-parallax-max="26"></div>
+    <canvas id="particle-canvas"></canvas>
+    <!-- 新增雨滴画布 -->
+    <canvas id="rain-canvas"></canvas>
+
+    <div class="main-container" id="mainContainer">
+        <div class="time-section" id="timeSectionTrigger">
+            <div class="clock" id="clock">--:--</div>
+            <div class="date-text" id="dateText"></div>
         </div>
+        <div class="search-section" id="searchSection">
+            <div class="search-wrapper">
+                <div class="search-icon">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="10.5" cy="10.5" r="7.5" />
+                        <line x1="16" y1="16" x2="21" y2="21" />
+                    </svg>
+                </div>
+                <input type="text" class="search-input" id="searchInput" placeholder="在 Google 上搜索" autofocus
+                    autocomplete="off" spellcheck="false">
+                <button class="search-clear" id="searchClear"><span class="svg-icon" aria-hidden="true" data-svg="close"></span></button>
+            </div>
+            <div class="suggestions-dropdown" id="suggestionsDropdown"></div>
+            <div class="engine-switcher" id="engineSwitcher"></div>
+        </div>
+        <div class="bookmarks-section" id="bookmarksSection"></div>
+    </div>
+
+    <!-- 天气按钮（左下角） -->
+    <button class="weather-fab" id="weatherFab" title="天气详情">
+        <span id="weatherFabIcon"><span class="svg-icon" aria-hidden="true" data-svg="sun"></span></span>
+        <div class="weather-fab-text" id="weatherFabText">获取中...</div>
     </button>
 
-    <div class="search_bar">
-        <input id="search_bar" type="text" onfocus="unshowUrlBar()" onblur="unshowSearchKeyWordBarTigger()"
-            oninput="keywordfun();showSearchKeyWordBar();" onkeydown="keyupEvent(event);" placeholder='欢迎使用轻-soft起始页！'>
-        <div id="key_words_bar_box" tabindex=0>
-            <div id="key_words_bar">
-                <li id="searchengine" class="button" tabindex="0" onclick="refocus()">搜索引擎：必应(Alt+任意键切换 推荐Ctrl + Alt)</li>
+    <button class="settings-fab" id="settingsFab" title="设置"><span class="svg-icon" aria-hidden="true" data-svg="settings"></span></button>
+
+    <!-- 世界时钟 -->
+    <div class="world-clock-overlay" id="worldClockOverlay">
+        <div class="world-clock-panel">
+            <div class="world-clock-header">
+                <h2><span class="svg-icon" aria-hidden="true" data-svg="globe"></span> 世界时钟</h2>
+                <button class="settings-close-btn" id="closeWorldClockBtn"><span class="svg-icon" aria-hidden="true" data-svg="close"></span></button>
+            </div>
+            <div class="world-clock-body">
+                <div class="world-clock-add">
+                    <select class="settings-select" id="timezonePreset">
+                        <option value="">选择常用时区...</option>
+                        <option value="UTC+0">伦敦 (UTC+0)</option>
+                        <option value="UTC+8">北京/上海 (UTC+8)</option>
+                        <option value="UTC+9">东京 (UTC+9)</option>
+                        <option value="UTC-5">纽约 (UTC-5)</option>
+                        <option value="UTC-8">洛杉矶 (UTC-8)</option>
+                        <option value="UTC+1">巴黎 (UTC+1)</option>
+                        <option value="UTC+5:30">孟买 (UTC+5:30)</option>
+                        <option value="UTC+11">悉尼 (UTC+11)</option>
+                    </select>
+                    <input type="text" class="settings-input" id="customTimezoneInput" placeholder="手动输入 UTC±HH:MM">
+                    <button class="btn primary" id="addTimezoneBtn">添加</button>
+                </div>
+                <div class="timezone-list" id="timezoneList"></div>
             </div>
         </div>
     </div>
 
-    <div id="url_bar">
-        <button id="url1" class="button button_normal url" onclick="window.location.href='https://github.com/'">
-            <img id="url1_img" class="url_img" src="images/github_favicon.png">
-        </button>
-        <button id="url2" class="button button_normal url" onclick="window.location.href='https://github.com/'">
-            <img id="url2_img" class="url_img" src="images/github_favicon.png">
-        </button>
-        <button id="url3" class="button button_normal url" onclick="window.location.href='https://www.bilibili.com'">
-            <img id="url3_img" class="url_img" src="images/bilibili_favicon.ico">
-        </button>
-        <button id="url4" class="button button_normal url" onclick="window.location.href='https://www.bilibili.com'">
-            <img id="url4_img" class="url_img" src="images/bilibili_favicon.ico">
-        </button>
-    </div>
-
-    <img id="button_setting" class="button_normal button" src="images/setting.png" onclick="clickSetting()">
-    <p id="button_img" class="button"
-        onclick="window.location.href='https://github.com/Hisuifeng/softstartpage/issues/1'">喜欢这张图片吗？</p>
-
-    <div id="blur" onclick="clickExit()"></div>
-    <div id="setting_bar">
-        <div id="setting_bar_left">
-            <p class="p-setting">设置</p>
-            <li class="button" onclick="clickFavoriteBar()">快捷方式</li>
-            <li class="button" onclick="clickWallpaperBar()">背景</li>
-            <li class="button" onclick="clickExit()">退出设置</li>
-        </div>
-        <div id="setting_bar_right">
-            <div id="setting_bar_right_favorite" class="setting_page">
-                <hr>
-                <p class="ps-setting">快捷方式 favorite</p>
-                <hr>
-                <p class="pss-setting">| 快捷方式设置</p>
-                <p class="pss-setting">第一个快捷方式</p>
-                <div class="setting_bar_right_input">
-                    <input id="setting_input1_url" class="setting_input" type="text" placeholder='url'>
-                    <p></p>
-                    <input id="setting_input1_icon" class="setting_input" type="text" placeholder='icon'>
-                </div>
-                <p class="pss-setting">第二个快捷方式</p>
-                <div class="setting_bar_right_input">
-                    <input id="setting_input2_url" class="setting_input" type="text" placeholder='url'>
-                    <p></p>
-                    <input id="setting_input2_icon" class="setting_input" type="text" placeholder='icon'>
-                </div>
-                <p class="pss-setting">第三个快捷方式</p>
-                <div class="setting_bar_right_input">
-                    <input id="setting_input3_url" class="setting_input" type="text" placeholder='url'>
-                    <p></p>
-                    <input id="setting_input3_icon" class="setting_input" type="text" placeholder='icon'>
-                </div>
-                <p class="pss-setting">第四个快捷方式</p>
-                <div class="setting_bar_right_input">
-                    <input id="setting_input4_url" class="setting_input" type="text" placeholder='url'>
-                    <p></p>
-                    <input id="setting_input4_icon" class="setting_input" type="text" placeholder='icon'>
-                </div>
-
-                <div class="button_normal_setting_box">
-                    <p class="button button_normal button_normal_setting" onclick="setFavorite()">保存</p>
+    <!-- 天气详情面板 -->
+    <div class="weather-overlay" id="weatherOverlay">
+        <div class="weather-panel">
+            <div class="weather-panel-header">
+                <h2><span class="svg-icon" aria-hidden="true" data-svg="weather"></span> 天气详情</h2>
+                <div style="display:flex; gap:8px;">
+                    <button class="settings-close-btn" id="refreshWeatherBtn" title="刷新天气"><span
+                            class="svg-icon" aria-hidden="true" data-svg="refresh"></span></button>
+                    <button class="settings-close-btn" id="closeWeatherBtn"><span class="svg-icon" aria-hidden="true"
+                            data-svg="close"></span></button>
                 </div>
             </div>
-            <div id="setting_bar_right_wallpaper" class="setting_page">
-                <hr>
-                <p class="ps-setting">背景 wallpaper</p>
-                <hr>
-                <p class="pss-setting">| 壁纸设置</p>
-                <div class="setting_bar_right_input">
-                    <img id="setting_wallpaper" src="" style="width: 70%;height: 70%;border-radius: 10px;">
-                    <p class="pss-setting">目前使用的图片背景</p>
+            <div class="weather-panel-body">
+                <div class="weather-main-info" id="weatherMainInfo"></div>
+                <div class="weather-chart-legend">
+                    <span class="legend-item"><span class="legend-color" style="background: var(--temp-color);"></span>
+                        温度</span>
+                    <span class="legend-item"><span class="legend-color" style="background: var(--feel-color);"></span>
+                        体感</span>
+                    <span class="legend-item"><span class="legend-color"
+                            style="background: var(--precip-color);"></span> 降水</span>
                 </div>
-                <p class="pss-setting">更改壁纸</p>
-                <div class="setting_bar_right_input">
-                    <input id="setting_input_wallpaperurl" class="setting_input" type="text" placeholder='壁纸链接'>
-                </div>
-                <div class="button_normal_setting_box">
-                    <p class="button button_normal button_normal_setting" onclick="setWallpaperCookie()">保存</p>
-                </div>
-                <div class="button_normal_setting_highlight">
-                    <p class="pss-setting">|关于壁纸设置的说明</p>
-                    <p class="pss-setting">因为跨源策略，无法使用本地图片作为壁纸。在该功能开发时考虑过多种情况，随机壁纸存在效率问题，除非本地部署，即使是使用了图床也不可避免有着加载慢的问题。因此默认情况下使用静态壁纸:(</p>
-                    <p class="pss-setting">如何使用随机壁纸呢？</p>
-                    <p class="pss-setting">在壁纸链接中输入数字保存后即可使用随机壁纸。</p>
-                    <p class="pss-setting">-1 使用默认壁纸</p>
-                    <p class="pss-setting">0 使用仓库随机壁纸</p>
-                    <p class="pss-setting">1 使用api随机壁纸</p>
-                    <p class="pss-setting">当然，你也可以使用现成的随机壁纸api并输入到壁纸链接输入框中。</p>
+                <div class="weather-chart-scroll">
+                    <div class="weather-chart-container" id="weatherChartContainer">
+                        <canvas id="weatherChartCanvas"></canvas>
+                        <div class="chart-tooltip" id="chartTooltip"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script type="text/javascript" src="main.js"></script>
-    <script type="text/javascript" src="time.js"></script>
-    <script type="text/javascript" src="keyword.js"></script>
-    <script type="text/javascript" src="cookie.js"></script>
+    <!-- 设置面板 -->
+    <div class="settings-overlay" id="settingsOverlay">
+        <div class="settings-panel">
+            <div class="settings-panel-header">
+                <h2><span class="svg-icon" aria-hidden="true" data-svg="settings"></span> 设置</h2>
+                <button class="settings-close-btn" id="settingsCloseBtn"><span class="svg-icon" aria-hidden="true"
+                        data-svg="close"></span></button>
+            </div>
+            <div class="settings-panel-body">
+                <div class="settings-group">
+                    <div class="settings-group">
+                        <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
+                                data-svg="location"></span>自定义经纬度</div>
+                        <div class="settings-row" style="flex-direction:column; align-items:flex-start;">
+                            <div style="display:flex; gap:8px; width:100%; align-items:center;">
+                                <input type="number" class="settings-input" id="customLatInput"
+                                    placeholder="纬度 (如 39.9)" step="any" style="flex:1;">
+                                <input type="number" class="settings-input" id="customLonInput"
+                                    placeholder="经度 (如 116.4)" step="any" style="flex:1;">
+                                <button class="btn primary" id="applyCustomCoords">应用</button>
+                            </div>
+                            <span
+                                style="font-size:0.75rem; color:var(--text-tertiary); margin-top:4px;">留空则自动使用IP定位</span>
+                        </div>
+                    </div>
+                    <div class="settings-group">
+                        <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
+                                data-svg="rain"></span>动态背景</div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">启用雨效</span>
+                            <label class="toggle-switch"><input type="checkbox" id="toggleWeatherEffect" checked><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">粒子背景</span>
+                            <label class="toggle-switch"><input type="checkbox" id="toggleParticles" checked><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                        <div class="settings-row">
+                            <span class="settings-row-label">视差背景</span>
+                            <label class="toggle-switch"><input type="checkbox" id="toggleParallax" checked><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                    </div>
+                    <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
+                            data-svg="clock"></span>时间格式</div>
+                    <div class="settings-row">
+                        <span class="settings-row-label">24小时制</span>
+                        <label class="toggle-switch"><input type="checkbox" id="toggle24Hour"><span
+                                class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <span class="settings-row-label">显示秒</span>
+                        <label class="toggle-switch"><input type="checkbox" id="toggleSeconds"><span
+                                class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <span class="settings-row-label">日期格式</span>
+                        <select class="settings-select" id="selectDateFormat">
+                            <option value="cn">YYYY年MM月DD日</option>
+                            <option value="iso">YYYY-MM-DD</option>
+                            <option value="us">MM/DD/YYYY</option>
+                            <option value="uk">DD/MM/YYYY</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <div class="settings-group-label"><span class="svg-icon" aria-hidden="true" data-svg="image"></span>壁纸
+                    </div>
+                    <div class="settings-row" style="flex-direction:column; align-items:flex-start;">
+                        <div style="display:flex; gap:8px; width:100%; align-items:center;">
+                            <input type="text" class="settings-input" id="wallpaperUrlInput" placeholder="输入网络图片URL">
+                            <button class="btn" id="applyUrlWallpaper">应用</button>
+                        </div>
+                        <div class="wallpaper-actions" style="margin-top:8px;">
+                            <label class="file-upload-label" for="wallpaperFileInput"><span
+                                    class="svg-icon" aria-hidden="true" data-svg="folder"></span>上传本地图片</label>
+                            <input type="file" class="file-upload-input" id="wallpaperFileInput" accept="image/*">
+                            <button class="btn danger" id="clearWallpaper">清除壁纸</button>
+                        </div>
+                        <div class="wallpaper-preview" id="wallpaperPreview"></div>
+                    </div>
+                    <div class="settings-row">
+                        <span class="settings-row-label">未设置时启用默认壁纸</span>
+                        <label class="toggle-switch"><input type="checkbox" id="toggleDefaultWallpaper" checked><span
+                                class="toggle-slider"></span></label>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
+                            data-svg="keyboard"></span>快捷键</div>
+                    <div class="settings-row">
+                        <span class="settings-row-label">切换引擎修饰键</span>
+                        <select class="settings-select" id="selectModifierKey">
+                            <option value="ctrl">Ctrl + 数字</option>
+                            <option value="alt">Alt + 数字</option>
+                            <option value="shift">Shift + 数字</option>
+                            <option value="none">仅数字键 (焦点不在输入框)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
+                            data-svg="search"></span>搜索与引擎</div>
+                    <div class="settings-row">
+                        <span class="settings-row-label">启用联想</span>
+                        <label class="toggle-switch"><input type="checkbox" id="toggleSuggestions" checked><span
+                                class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <span class="settings-row-label">备用API</span>
+                        <select class="settings-select" id="selectFallbackAPI">
+                            <option value="baidu">百度</option>
+                            <option value="bing">Bing</option>
+                            <option value="google">Google</option>
+                        </select>
+                    </div>
+                    <div class="settings-row">
+                        <span class="settings-row-label">搜索历史</span>
+                        <button class="btn danger" id="btnClearAllHistory">清除全部历史</button>
+                    </div>
+                    <div class="settings-group-label" style="margin-top:16px;"><span class="svg-icon" aria-hidden="true"
+                            data-svg="wrench"></span>自定义搜索引擎</div>
+                    <div class="custom-engines-list" id="customEnginesList"></div>
+                    <button class="btn-add-bookmark" id="btnAddCustomEngine">+ 添加自定义引擎</button>
+                </div>
+                <div class="settings-group">
+                    <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
+                            data-svg="pin"></span>书签管理 <span
+                            style="font-weight:400;font-size:0.8rem;color:var(--text-tertiary);">(可拖拽排序)</span></div>
+                    <div class="bookmark-edit-list" id="bookmarkEditList"></div>
+                    <button class="btn-add-bookmark" id="btnAddBookmark">+ 添加书签</button>
+                </div>
+            </div>
+            <div class="settings-panel-footer">
+                <button class="btn danger" id="btnResetDefaults">恢复默认</button>
+                <div style="flex:1;"></div>
+                <button class="btn" id="btnCancelSettings">取消</button>
+                <button class="btn primary" id="btnSaveSettings">保存</button>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script src="js/utils.js" defer></script>
+    <script src="js/particles.js" defer></script>
+    <script src="js/parallax.js" defer></script>
+    <script src="js/clock.js" defer></script>
+    <script src="js/wallpaper.js" defer></script>
+    <script src="js/engine.js" defer></script>
+    <script src="js/search.js" defer></script>
+    <script src="js/bookmarks.js" defer></script>
+    <script src="js/settings.js" defer></script>
+    <script src="js/worldclock.js" defer></script>
+    <script src="js/weather.js" defer></script>
+    <script src="js/main.js" defer></script>
 </body>
 
 </html>
