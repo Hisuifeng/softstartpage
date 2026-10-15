@@ -22,7 +22,7 @@
         rainOpacity: App.Utils.load('sp_rain_opacity', 1),
         rainColors: App.Utils.load('sp_rain_colors', { dark: '#87ceeb', light: '#2a8fd4' }),
         bookmarkInPage: App.Utils.load('sp_bookmark_inpage', true),
-        particlesEnabled: App.Utils.load('sp_particles', true),
+        particlesEnabled: App.Utils.load('sp_particles', false),
         parallaxEnabled: App.Utils.load('sp_parallax', true),
         defaultWallpaperEnabled: App.Utils.load('sp_default_wallpaper', true),
         customEngines: App.Utils.load('sp_custom_engines', []),

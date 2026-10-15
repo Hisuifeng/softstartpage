@@ -163,14 +163,43 @@
                 }
             }
             try {
-                // 新 API 参数，移除 models=cma_grapes_global
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,uv_index_max,uv_index_clear_sky_max&hourly=temperature_2m,precipitation,weather_code,apparent_temperature,snowfall&current=temperature_2m,precipitation,weather_code,rain,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,snowfall&timezone=auto&models=cma_grapes_global`;
-                const resp = await fetch(url);
+                // 主数据：CMA（中国气象局）GFS GRAPES 全球模型的专用端点
+                // 文档：https://open-meteo.com/en/docs/cma-api
+                // 注：该模型原生为 3 小时间隔，Open-Meteo 会插值为逐小时序列供图表使用；其不提供紫外线(UV)数据
+                const url = `https://api.open-meteo.com/v1/cma?latitude=${lat}&longitude=${lon}&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,uv_index_max,uv_index_clear_sky_max&hourly=temperature_2m,precipitation,weather_code,apparent_temperature,snowfall&current=temperature_2m,precipitation,weather_code,rain,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,snowfall&timezone=auto`;
+                // 紫外线补齐：CMA 无 UV 数据，改用 Open-Meteo 默认模型（best_match）单独获取并按日期合并。
+                // 两个请求并发，UV 失败不影响主数据（UV 保持 null，界面回退为 --）。
+                const uvUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=uv_index_max,uv_index_clear_sky_max&timezone=auto`;
+                const [resp, uvResp] = await Promise.all([fetch(url), fetch(uvUrl)]);
                 if (!resp.ok) throw new Error('天气获取失败');
                 const data = await resp.json();
+                await this._mergeUv(data, uvResp);
                 App.Utils.save(cacheKey, { data, timestamp: Date.now() });
                 return data;
             } catch (e) { console.error(e); App.Utils.showToast('天气数据获取失败'); return null; }
+        },
+
+        /**
+         * 将 Open-Meteo 默认模型返回的紫外线数据按日期合并进主数据（CMA 无 UV）。
+         * @param {object} data    CMA 主数据（就地修改其 daily.uv_index_max / uv_index_clear_sky_max）
+         * @param {Response} uvResp 默认模型 UV 响应；非 200 或异常时静默跳过
+         */
+        async _mergeUv(data, uvResp) {
+            try {
+                if (!data?.daily?.time || !uvResp || !uvResp.ok) return;
+                const uvData = await uvResp.json();
+                if (!uvData?.daily?.time) return;
+                const idxByDate = {};
+                uvData.daily.time.forEach((t, i) => { idxByDate[t] = i; });
+                data.daily.time.forEach((t, i) => {
+                    const j = idxByDate[t];
+                    if (j === undefined) return;
+                    const uvMax = uvData.daily.uv_index_max?.[j];
+                    const uvClear = uvData.daily.uv_index_clear_sky_max?.[j];
+                    if (uvMax !== undefined && uvMax !== null && data.daily.uv_index_max) data.daily.uv_index_max[i] = uvMax;
+                    if (uvClear !== undefined && uvClear !== null && data.daily.uv_index_clear_sky_max) data.daily.uv_index_clear_sky_max[i] = uvClear;
+                });
+            } catch (uvErr) { console.warn('紫外线数据补齐失败', uvErr); }
         },
 
         // ==================== 更新左下角按钮 ====================
@@ -250,7 +279,10 @@
 
             const current = data.current;
             const daily = data.daily;
-            const todayStr = new Date().toISOString().slice(0, 10);
+            // API 的 daily.time 使用「请求坐标所在时区」的当地日期，需按同一时区取“今天”。
+            // 若直接用 UTC 日期（toISOString），当本地时区快于 UTC（如北京 UTC+8 的凌晨）
+            // 会匹配不到当天，导致最高/最低/紫外线/日出日落全部显示为 --。
+            const todayStr = new Date(Date.now() + (data.utc_offset_seconds || 0) * 1000).toISOString().slice(0, 10);
             const todayIndex = daily.time.indexOf(todayStr);
 
             // 实时数据

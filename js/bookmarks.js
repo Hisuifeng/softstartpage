@@ -42,7 +42,25 @@
         /** 渲染主页书签区域 */
         renderMain() {
             if (!this.mainContainer) return;
-            const bookmarks = window.App.state.bookmarks;
+            const bookmarks = window.App.state.bookmarks || [];
+            // 没有有效书签（无网址）时，显示“添加书签”加号入口
+            const hasValid = bookmarks.some(bm => String(bm.url || '').trim());
+            if (!hasValid) {
+                this.mainContainer.innerHTML = `
+                    <a class="bookmark-item bookmark-add" href="#" title="添加书签" aria-label="添加书签">
+                        <div class="bookmark-icon-wrapper bookmark-add-icon">${App.Utils.svg('plus')}</div>
+                        <span class="bookmark-name">添加书签</span>
+                    </a>
+                `;
+                const addTile = this.mainContainer.querySelector('.bookmark-add');
+                if (addTile) {
+                    addTile.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (window.App.Settings) window.App.Settings.openTo('secBookmarks');
+                    });
+                }
+                return;
+            }
             // 页面内跳转（默认开启）：在当前标签页打开；关闭时新标签页打开
             const inPage = window.App.state.bookmarkInPage !== false;
             const targetAttr = inPage ? '' : ' target="_blank" rel="noopener noreferrer"';
@@ -131,6 +149,52 @@
         /** 保存书签到 localStorage */
         save() {
             App.Utils.save('sp_bookmarks', window.App.state.bookmarks);
+        },
+
+        /**
+         * 导出书签为可粘贴的 JSON 文本（只保留有网址的有效书签）
+         * @returns {string}
+         */
+        exportData() {
+            const bookmarks = (window.App.state.bookmarks || [])
+                .filter(bm => String(bm.url || '').trim())
+                .map(bm => ({
+                    name: String(bm.name || '').trim(),
+                    url: String(bm.url || '').trim(),
+                    iconUrl: String(bm.iconUrl || '').trim()
+                }));
+            return JSON.stringify({
+                type: 'softstartpage-bookmarks',
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                bookmarks
+            }, null, 2);
+        },
+
+        /**
+         * 解析导入的书签文本（支持导出格式或纯数组）
+         * @param {string} text
+         * @returns {Array|null} 规范化后的书签数组；无效返回 null
+         */
+        parseImport(text) {
+            let data;
+            try {
+                data = JSON.parse(String(text || ''));
+            } catch (e) {
+                return null;
+            }
+            let arr = null;
+            if (Array.isArray(data)) arr = data;
+            else if (data && Array.isArray(data.bookmarks)) arr = data.bookmarks;
+            if (!arr) return null;
+
+            const cleaned = arr.slice(0, 1000).map(bm => ({
+                id: App.Utils.genId(),
+                name: String((bm && bm.name) || '').trim().slice(0, 200),
+                url: String((bm && bm.url) || '').trim().slice(0, 2000),
+                iconUrl: String((bm && bm.iconUrl) || '').trim().slice(0, 2000)
+            })).filter(bm => bm.url);
+            return cleaned;
         },
 
         // ---------- 拖拽实现 ----------

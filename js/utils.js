@@ -85,6 +85,7 @@
         // 源文件见 svg/ 文件夹（内容与下方保持一致）
         ICONS: {
             close: '<path d="M18 6 6 18M6 6l12 12"/>',
+            plus: '<path d="M12 5v14M5 12h14"/>',
             settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
             globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
             weather: '<circle cx="8" cy="8" r="3.6"/><path d="M8 1.6v1.9M8 12.5v1.9M1.6 8h1.9M12.5 8h1.9M3.3 3.3l1.4 1.4M11.3 11.3l1.4 1.4M3.3 12.7l1.4-1.4M11.3 4.7l1.4-1.4"/><path d="M5 20.5a4 4 0 0 1-.7-7.9 5.5 5.5 0 0 1 9.9-1.9A3.9 3.9 0 0 1 18.5 20H5.5a4 4 0 0 1-.5-.5z"/>',
@@ -156,6 +157,50 @@
                 el.textContent = '';
                 el.appendChild(svgEl);
             });
+        },
+
+        /**
+         * 复制文本到剪贴板；剪贴板 API 不可用时回退到临时 textarea + execCommand
+         * @param {string} text
+         * @returns {Promise<boolean>} 是否复制成功
+         */
+        async copyText(text) {
+            const value = String(text ?? '');
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(value);
+                    return true;
+                }
+            } catch (e) { /* 继续回退 */ }
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = value;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.top = '-1000px';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                ta.setSelectionRange(0, value.length);
+                const ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+                return ok;
+            } catch (e) {
+                return false;
+            }
+        },
+
+        /**
+         * 从剪贴板读取文本；不可用或无权限时返回 null（由调用方回退）
+         * @returns {Promise<string|null>}
+         */
+        async readText() {
+            try {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    return await navigator.clipboard.readText();
+                }
+            } catch (e) { /* 由调用方回退 */ }
+            return null;
         }
     };
 

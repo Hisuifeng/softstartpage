@@ -16,7 +16,7 @@
         mouseY: -1000,
         animFrame: null,
         // 是否允许显示粒子动画（由设置面板开关控制）
-        enabled: true,
+        enabled: false,
         // 主题颜色
         colors: {
             line: 'rgba(160,190,225,0.28)',

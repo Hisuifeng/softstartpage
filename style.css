@@ -166,10 +166,6 @@ body {
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
     background-color: var(--bg-deep);
-    background-image:
-        radial-gradient(circle at 18% 12%, var(--accent-dim), transparent 42%),
-        radial-gradient(circle at 82% 88%, var(--accent-dim), transparent 42%);
-    background-attachment: fixed;
     transition: background-color 0.4s ease;
     -webkit-font-smoothing: antialiased;
     user-select: none;
@@ -362,6 +358,7 @@ body {
     height: 100%;
     z-index: 1;
     pointer-events: none;
+    display: none;
 }
 
 /* 主容器 */
@@ -774,6 +771,25 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* 无书签时的“添加书签”入口 */
+.bookmark-add .bookmark-icon-wrapper {
+    border-style: dashed;
+    background: transparent;
+}
+
+.bookmark-add-icon .svg-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    transition: color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.bookmark-add:hover .bookmark-add-icon .svg-icon {
+    color: var(--accent);
+    opacity: 1;
 }
 
 /* 设置按钮 */
@@ -1274,6 +1290,17 @@ body {
 
 .settings-clear-btn {
     margin-top: 8px;
+    justify-content: center;
+}
+
+.bookmark-io-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.bookmark-io-actions .btn {
+    flex: 1;
     justify-content: center;
 }
 

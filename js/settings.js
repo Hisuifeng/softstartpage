@@ -44,6 +44,8 @@
         clearHistoryBtn: null,
         addBookmarkBtn: null,
         clearBookmarksBtn: null,
+        exportBookmarksBtn: null,
+        importBookmarksBtn: null,
         addCustomEngineBtn: null,
         clearEnginesBtn: null,
         customEnginesList: null,
@@ -79,6 +81,8 @@
             this.clearHistoryBtn = document.getElementById('btnClearAllHistory');
             this.addBookmarkBtn = document.getElementById('btnAddBookmark');
             this.clearBookmarksBtn = document.getElementById('btnClearBookmarks');
+            this.exportBookmarksBtn = document.getElementById('btnExportBookmarks');
+            this.importBookmarksBtn = document.getElementById('btnImportBookmarks');
             this.addCustomEngineBtn = document.getElementById('btnAddCustomEngine');
             this.clearEnginesBtn = document.getElementById('btnClearCustomEngines');
             this.customEnginesList = document.getElementById('customEnginesList');
@@ -95,6 +99,17 @@
             if (this.body) this.body.scrollTop = 0;
             this._updateActiveNav();
             this.overlay.classList.add('open');
+        },
+
+        /** 打开设置面板并定位到指定分区 */
+        openTo(sectionId) {
+            this.open();
+            const target = sectionId ? document.getElementById(sectionId) : null;
+            if (!target || !this.body) return;
+            // 等待面板显示、布局完成后再滚动定位
+            requestAnimationFrame(() => {
+                this.body.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
+            });
         },
 
         close() {
@@ -133,7 +148,7 @@
             App.Utils.save('sp_rain_colors', rainColors);
             if (window.App.Weather) App.Weather.setRainColors(rainColors);
 
-            const particles = this.toggleParticles?.checked ?? true;
+            const particles = this.toggleParticles?.checked ?? false;
             state.particlesEnabled = particles;
             App.Utils.save('sp_particles', particles);
             if (window.App.Particles) App.Particles.setEnabled(particles);
@@ -187,7 +202,7 @@
             state.rainOpacity = 1;
             state.rainColors = { dark: '#87ceeb', light: '#2a8fd4' };
             state.bookmarkInPage = true;
-            state.particlesEnabled = true;
+            state.particlesEnabled = false;
             state.defaultWallpaperEnabled = true;
             state.parallaxEnabled = true;
             // 主题恢复默认（跟随系统）
@@ -208,10 +223,10 @@
             App.Utils.save('sp_rain_opacity', 1);
             App.Utils.save('sp_rain_colors', { dark: '#87ceeb', light: '#2a8fd4' });
             App.Utils.save('sp_bookmark_inpage', true);
-            App.Utils.save('sp_particles', true);
+            App.Utils.save('sp_particles', false);
             App.Utils.save('sp_default_wallpaper', true);
             App.Utils.save('sp_parallax', true);
-            if (window.App.Particles) App.Particles.setEnabled(true);
+            if (window.App.Particles) App.Particles.setEnabled(false);
             if (window.App.Parallax) App.Parallax.setEnabled(true);
             if (window.App.Weather) App.Weather.setOpacity(1);
             if (window.App.Weather) App.Weather.setRainColors({ dark: '#87ceeb', light: '#2a8fd4' });
@@ -250,7 +265,7 @@
             const rc = state.rainColors || {};
             if (this.rainColorDark) this.rainColorDark.value = rc.dark || '#87ceeb';
             if (this.rainColorLight) this.rainColorLight.value = rc.light || '#2a8fd4';
-            if (this.toggleParticles) this.toggleParticles.checked = state.particlesEnabled !== false;
+            if (this.toggleParticles) this.toggleParticles.checked = !!state.particlesEnabled;
             if (this.toggleParallax) this.toggleParallax.checked = state.parallaxEnabled !== false;
             if (this.toggleDefaultWallpaper) this.toggleDefaultWallpaper.checked = state.defaultWallpaperEnabled !== false;
             if (this.wallpaperPinStatus) {
@@ -364,6 +379,64 @@
             App.Utils.showToast('已清空全部书签');
         },
 
+        /** 导出书签到剪贴板 */
+        async _exportBookmarks() {
+            if (!window.App.Bookmarks) return;
+            const data = App.Bookmarks.exportData();
+            const count = (JSON.parse(data).bookmarks || []).length;
+            if (!count) {
+                App.Utils.showToast('当前没有可导出的书签');
+                return;
+            }
+            const ok = await App.Utils.copyText(data);
+            if (ok) {
+                App.Utils.showToast(`已导出 ${count} 条书签到剪贴板`);
+            } else {
+                // 复制失败时提供手动复制入口
+                window.prompt('复制失败，请手动复制以下书签数据：', data);
+            }
+        },
+
+        /** 从剪贴板导入书签（合并去重，不覆盖现有书签） */
+        async _importBookmarks() {
+            if (!window.App.Bookmarks) return;
+            let text = await App.Utils.readText();
+            if (!text || !String(text).trim()) {
+                text = window.prompt('未能读取剪贴板，请粘贴书签数据：');
+            }
+            if (!text || !String(text).trim()) return;
+
+            const list = App.Bookmarks.parseImport(text);
+            if (!list || !list.length) {
+                App.Utils.showToast('剪贴板内容不是有效的书签数据');
+                return;
+            }
+
+            // 合并：保留现有有效书签，按网址去重后追加
+            const existing = (window.App.state.bookmarks || [])
+                .filter(bm => String(bm.url || '').trim());
+            const seen = new Set(existing.map(bm => String(bm.url).trim().toLowerCase()));
+            let added = 0;
+            for (const bm of list) {
+                const key = bm.url.toLowerCase();
+                if (seen.has(key)) continue;
+                seen.add(key);
+                existing.push(bm);
+                added++;
+            }
+
+            if (!added) {
+                App.Utils.showToast('没有可导入的新书签（已存在）');
+                return;
+            }
+
+            window.App.state.bookmarks = existing;
+            App.Utils.save('sp_bookmarks', window.App.state.bookmarks);
+            App.Bookmarks.renderMain();
+            App.Bookmarks.renderEditor();
+            App.Utils.showToast(`已导入 ${added} 条书签`);
+        },
+
         _clearCustomEngines() {
             if (!confirm('确定要清空全部自定义搜索引擎吗？此操作不可撤销。')) return;
             window.App.state.customEngines = [];
@@ -453,6 +526,8 @@
             });
 
             this.clearBookmarksBtn?.addEventListener('click', () => this._clearBookmarks());
+            this.exportBookmarksBtn?.addEventListener('click', () => this._exportBookmarks());
+            this.importBookmarksBtn?.addEventListener('click', () => this._importBookmarks());
 
             this.addCustomEngineBtn?.addEventListener('click', () => {
                 const engines = window.App.state.customEngines || [];
