@@ -58,8 +58,10 @@ App.Weather.startEffect('rain', 4);
 
 | 键 | 含义 |
 | --- | --- |
+| `sp_theme` | 明暗主题模式（`auto` / `light` / `dark`，默认跟随系统） |
 | `sp_time` | 时间格式（24 小时、显示秒、日期格式） |
 | `sp_bookmarks` | 书签数组 |
+| `sp_bookmark_inpage` | 书签页面内跳转（默认开启，关闭则新标签页打开） |
 | `sp_history` | 搜索历史 |
 | `sp_suggestions` | 搜索联想开关 |
 | `sp_fallback` | 联想备用 API（baidu/bing/google） |
@@ -67,8 +69,13 @@ App.Weather.startEffect('rain', 4);
 | `sp_custom_engines` | 自定义搜索引擎 |
 | `sp_engine` | 当前引擎 |
 | `sp_weather_effect` | 雨雪特效开关 |
+| `sp_rain_opacity` | 雨雪特效透明度（0–1，默认 1） |
+| `sp_rain_colors` | 雨效颜色（按主题，`{ dark, light }`，默认天蓝） |
 | `sp_custom_lat` / `sp_custom_lon` | 自定义经纬度 |
 | `sp_location_cache` | 位置缓存（24h） |
 | `sp_timezones` | 世界时钟时区列表 |
 | `sp_wallpaper` | 壁纸来源 / URL（`none` 时自动使用主题默认壁纸） |
 | `sp_particles` | 粒子背景开关 |
+| `sp_parallax` | 视差背景开关 |
+| `sp_default_wallpaper` | 未设置壁纸时启用默认随机壁纸 |
+| `sp_theme_wallpaper_count` | 每主题默认壁纸张数（默认 8） |

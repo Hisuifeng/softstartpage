@@ -52,6 +52,11 @@
             this.input.placeholder = `在 ${name} 上搜索`;
         },
 
+        /** 对外接口：引擎切换时更新占位文字 */
+        updatePlaceholder(engineName) {
+            this._updatePlaceholder(engineName);
+        },
+
         /** 执行搜索 */
         performSearch(query) {
             const state = window.App.state;
@@ -93,10 +98,24 @@
         /** 动态调整下拉高度 */
         _adjustDropdownHeight() {
             if (!this.dropdown.classList.contains('active')) return;
-            const contentHeight = this.dropdown.scrollHeight;
+            const dd = this.dropdown;
+            // 下拉打开时 padding 从 0 过渡到 6px；若此时直接读 scrollHeight，
+            // 量到的是「还没算上上下 padding」的高度，会比真实布局矮 12px，导致：
+            //   · 历史较少时最后一项"清除全部历史"被裁掉、且无法滚动看到；
+            //   · 历史较多时 maxHeight 偏小，滚动条到不了真正的底部。
+            // 这里临时固定 padding 并关闭过渡，量到最终布局后再恢复，
+            // 从而得到准确的内容高度。
+            const prevTransition = dd.style.transition;
+            const prevPadding = dd.style.padding;
+            dd.style.transition = 'none';
+            dd.style.padding = '6px 0';
+            const contentHeight = dd.scrollHeight;
+            dd.style.padding = prevPadding;
+            void dd.offsetHeight; // 强制同步布局，确保上面的临时样式生效
+            dd.style.transition = prevTransition;
             const maxLimit = 260;
-            this.dropdown.style.maxHeight = Math.min(contentHeight, maxLimit) + 'px';
-            this.dropdown.style.overflowY = contentHeight > maxLimit ? 'auto' : 'hidden';
+            dd.style.maxHeight = Math.min(contentHeight, maxLimit) + 'px';
+            dd.style.overflowY = contentHeight > maxLimit ? 'auto' : 'hidden';
         },
 
         /** 键盘上下导航联想词 */

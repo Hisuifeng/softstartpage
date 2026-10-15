@@ -21,7 +21,8 @@
 
         /** 当前主题对应的壁纸子目录 */
         _themeDir() {
-            const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+            const light = window.App.Theme ? !App.Theme.isDark()
+                : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
             return light ? 'light' : 'black';
         },
 
@@ -120,12 +121,10 @@
             this.applyToUI();
 
             // 主题切换时，若未设置自定义壁纸则换成对应主题的默认壁纸
-            const mq = window.matchMedia('(prefers-color-scheme: light)');
             const onThemeChange = () => {
                 if (this.wallpaper.type === 'none') this._applyDefaultForTheme();
             };
-            if (mq.addEventListener) mq.addEventListener('change', onThemeChange);
-            else if (mq.addListener) mq.addListener(onThemeChange);
+            window.addEventListener('themechange', onThemeChange);
 
             // 如果之前是 URL 壁纸，将 URL 填入输入框
             if (this.wallpaper.type === 'url' && this.urlInput) {

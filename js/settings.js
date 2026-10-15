@@ -16,8 +16,21 @@
         selectFallbackAPI: null,
         selectModifierKey: null,
         toggleWeatherEffect: null,
+        rainOpacityRange: null,
+        rainOpacityValue: null,
+        rainColorDark: null,
+        rainColorLight: null,
         toggleParticles: null,
+        toggleParallax: null,
         toggleDefaultWallpaper: null,
+        toggleBookmarkInPage: null,
+        selectThemeMode: null,
+
+        // 侧边栏
+        sidebar: null,
+        body: null,
+        navItems: null,
+        navSections: null,
 
         // 自定义经纬度
         customLatInput: null,
@@ -29,7 +42,9 @@
         resetBtn: null,
         clearHistoryBtn: null,
         addBookmarkBtn: null,
+        clearBookmarksBtn: null,
         addCustomEngineBtn: null,
+        clearEnginesBtn: null,
         customEnginesList: null,
 
         init() {
@@ -42,9 +57,15 @@
             this.selectFallbackAPI = document.getElementById('selectFallbackAPI');
             this.selectModifierKey = document.getElementById('selectModifierKey');
             this.toggleWeatherEffect = document.getElementById('toggleWeatherEffect');
+            this.rainOpacityRange = document.getElementById('rangeRainOpacity');
+            this.rainOpacityValue = document.getElementById('rainOpacityValue');
+            this.rainColorDark = document.getElementById('rainColorDark');
+            this.rainColorLight = document.getElementById('rainColorLight');
             this.toggleParticles = document.getElementById('toggleParticles');
             this.toggleParallax = document.getElementById('toggleParallax');
             this.toggleDefaultWallpaper = document.getElementById('toggleDefaultWallpaper');
+            this.toggleBookmarkInPage = document.getElementById('toggleBookmarkInPage');
+            this.selectThemeMode = document.getElementById('selectThemeMode');
 
             this.customLatInput = document.getElementById('customLatInput');
             this.customLonInput = document.getElementById('customLonInput');
@@ -55,10 +76,13 @@
             this.resetBtn = document.getElementById('btnResetDefaults');
             this.clearHistoryBtn = document.getElementById('btnClearAllHistory');
             this.addBookmarkBtn = document.getElementById('btnAddBookmark');
+            this.clearBookmarksBtn = document.getElementById('btnClearBookmarks');
             this.addCustomEngineBtn = document.getElementById('btnAddCustomEngine');
+            this.clearEnginesBtn = document.getElementById('btnClearCustomEngines');
             this.customEnginesList = document.getElementById('customEnginesList');
 
             this._bindEvents();
+            this._initSidebar();
         },
 
         open() {
@@ -66,6 +90,8 @@
             this._syncUI();
             if (window.App.Bookmarks) App.Bookmarks.renderEditor();
             this._renderCustomEnginesEditor();
+            if (this.body) this.body.scrollTop = 0;
+            this._updateActiveNav();
             this.overlay.classList.add('open');
         },
 
@@ -85,9 +111,25 @@
             state.fallbackAPI = this.selectFallbackAPI?.value || 'baidu';
             state.modifierKey = this.selectModifierKey?.value || 'ctrl';
 
+            const themeMode = this.selectThemeMode?.value || 'auto';
+            if (window.App.Theme) App.Theme.setMode(themeMode);
+
             const weatherEffect = this.toggleWeatherEffect?.checked ?? true;
             state.weatherEffectEnabled = weatherEffect;
             App.Utils.save('sp_weather_effect', weatherEffect);
+
+            const rainOpacity = (parseInt(this.rainOpacityRange?.value, 10) || 0) / 100;
+            state.rainOpacity = rainOpacity;
+            App.Utils.save('sp_rain_opacity', rainOpacity);
+            if (window.App.Weather) App.Weather.setOpacity(rainOpacity);
+
+            const rainColors = {
+                dark: this.rainColorDark?.value || '#87ceeb',
+                light: this.rainColorLight?.value || '#2a8fd4'
+            };
+            state.rainColors = rainColors;
+            App.Utils.save('sp_rain_colors', rainColors);
+            if (window.App.Weather) App.Weather.setRainColors(rainColors);
 
             const particles = this.toggleParticles?.checked ?? true;
             state.particlesEnabled = particles;
@@ -105,6 +147,9 @@
             if (window.App.Wallpaper) App.Wallpaper.applyToUI();
 
             // 书签
+            const bookmarkInPage = this.toggleBookmarkInPage?.checked ?? true;
+            state.bookmarkInPage = bookmarkInPage;
+            App.Utils.save('sp_bookmark_inpage', bookmarkInPage);
             if (window.App.Bookmarks) {
                 const newBookmarks = App.Bookmarks.collectEdited();
                 state.bookmarks = newBookmarks;
@@ -128,20 +173,23 @@
         },
 
         reset() {
-            if (!confirm('确定要恢复所有默认设置吗？')) return;
+            if (!confirm('确定要恢复所有默认设置吗？（书签与自定义搜索引擎将保留）')) return;
             const state = window.App.state;
             state.timeFormat = { hour24: true, showSeconds: true, dateFormat: 'cn' };
-            state.bookmarks = [{ id: '1', name: '', url: '', iconUrl: '' }];
-            state.customEngines = [];
             state.currentEngineKey = 'google';
             state.searchHistory = [];
             state.suggestionsEnabled = true;
             state.fallbackAPI = 'baidu';
             state.modifierKey = 'ctrl';
             state.weatherEffectEnabled = true;
+            state.rainOpacity = 1;
+            state.rainColors = { dark: '#87ceeb', light: '#2a8fd4' };
+            state.bookmarkInPage = true;
             state.particlesEnabled = true;
             state.defaultWallpaperEnabled = true;
             state.parallaxEnabled = true;
+            // 主题恢复默认（跟随系统）
+            if (window.App.Theme) App.Theme.setMode('auto');
             // 清除自定义经纬度
             state.customLat = null;
             state.customLon = null;
@@ -149,30 +197,27 @@
             App.Utils.save('sp_custom_lon', null);
 
             App.Utils.save('sp_time', state.timeFormat);
-            App.Utils.save('sp_bookmarks', state.bookmarks);
-            App.Utils.save('sp_custom_engines', []);
             App.Utils.save('sp_engine', 'google');
             App.Utils.save('sp_history', []);
             App.Utils.save('sp_suggestions', true);
             App.Utils.save('sp_fallback', 'baidu');
             App.Utils.save('sp_modifier', 'ctrl');
             App.Utils.save('sp_weather_effect', true);
+            App.Utils.save('sp_rain_opacity', 1);
+            App.Utils.save('sp_rain_colors', { dark: '#87ceeb', light: '#2a8fd4' });
+            App.Utils.save('sp_bookmark_inpage', true);
             App.Utils.save('sp_particles', true);
             App.Utils.save('sp_default_wallpaper', true);
             App.Utils.save('sp_parallax', true);
             if (window.App.Particles) App.Particles.setEnabled(true);
             if (window.App.Parallax) App.Parallax.setEnabled(true);
+            if (window.App.Weather) App.Weather.setOpacity(1);
+            if (window.App.Weather) App.Weather.setRainColors({ dark: '#87ceeb', light: '#2a8fd4' });
             if (window.App.Wallpaper) App.Wallpaper.applyToUI();
 
             if (window.App.Clock) App.Clock.refresh();
-            if (window.App.Bookmarks) {
-                App.Bookmarks.renderMain();
-                App.Bookmarks.renderEditor();
-            }
+            // 书签与自定义搜索引擎保留，不随恢复默认清除
             if (window.App.Engine) {
-                App.Engine.customEngines = [];
-                App.Engine.currentKey = 'google';
-                App.Engine.render();
                 App.Engine.switchTo('google');
             }
             if (window.App.Weather) {
@@ -194,9 +239,21 @@
             if (this.selectFallbackAPI) this.selectFallbackAPI.value = state.fallbackAPI || 'baidu';
             if (this.selectModifierKey) this.selectModifierKey.value = state.modifierKey || 'ctrl';
             if (this.toggleWeatherEffect) this.toggleWeatherEffect.checked = state.weatherEffectEnabled !== false;
+            if (this.rainOpacityRange) {
+                const pct = Math.round((state.rainOpacity ?? 1) * 100);
+                this.rainOpacityRange.value = pct;
+                if (this.rainOpacityValue) this.rainOpacityValue.textContent = pct + '%';
+            }
+            const rc = state.rainColors || {};
+            if (this.rainColorDark) this.rainColorDark.value = rc.dark || '#87ceeb';
+            if (this.rainColorLight) this.rainColorLight.value = rc.light || '#2a8fd4';
             if (this.toggleParticles) this.toggleParticles.checked = state.particlesEnabled !== false;
             if (this.toggleParallax) this.toggleParallax.checked = state.parallaxEnabled !== false;
             if (this.toggleDefaultWallpaper) this.toggleDefaultWallpaper.checked = state.defaultWallpaperEnabled !== false;
+            if (this.toggleBookmarkInPage) this.toggleBookmarkInPage.checked = state.bookmarkInPage !== false;
+            if (this.selectThemeMode) {
+                this.selectThemeMode.value = (window.App.Theme && App.Theme.mode) || 'auto';
+            }
 
             // 同步自定义经纬度
             const lat = App.Utils.load('sp_custom_lat', null);
@@ -289,6 +346,60 @@
             }
         },
 
+        _clearBookmarks() {
+            if (!confirm('确定要清空全部书签吗？此操作不可撤销。')) return;
+            window.App.state.bookmarks = [{ id: '1', name: '', url: '', iconUrl: '' }];
+            App.Utils.save('sp_bookmarks', window.App.state.bookmarks);
+            if (window.App.Bookmarks) {
+                App.Bookmarks.renderMain();
+                App.Bookmarks.renderEditor();
+            }
+            App.Utils.showToast('已清空全部书签');
+        },
+
+        _clearCustomEngines() {
+            if (!confirm('确定要清空全部自定义搜索引擎吗？此操作不可撤销。')) return;
+            window.App.state.customEngines = [];
+            if (window.App.Engine) {
+                App.Engine.setCustom([]);
+            } else {
+                App.Utils.save('sp_custom_engines', []);
+            }
+            this._renderCustomEnginesEditor();
+            App.Utils.showToast('已清空自定义引擎');
+        },
+
+        _initSidebar() {
+            this.sidebar = document.getElementById('settingsSidebar');
+            this.body = document.getElementById('settingsPanelBody');
+            if (!this.sidebar || !this.body) return;
+
+            this.navItems = Array.from(this.sidebar.querySelectorAll('.settings-nav-item'));
+            this.navSections = this.navItems
+                .map(it => document.getElementById(it.dataset.target))
+                .filter(Boolean);
+
+            this.navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const target = document.getElementById(item.dataset.target);
+                    if (target) this.body.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
+                });
+            });
+
+            this.body.addEventListener('scroll', () => this._updateActiveNav(), { passive: true });
+        },
+
+        _updateActiveNav() {
+            if (!this.navItems || !this.navSections) return;
+            const scrollTop = this.body.scrollTop;
+            let activeId = this.navSections[0]?.id;
+            for (const sec of this.navSections) {
+                if (sec.offsetTop - 24 <= scrollTop) activeId = sec.id;
+                else break;
+            }
+            this.navItems.forEach(it => it.classList.toggle('active', it.dataset.target === activeId));
+        },
+
         _bindEvents() {
             const fab = document.getElementById('settingsFab');
             if (fab) fab.addEventListener('click', () => this.open());
@@ -311,9 +422,30 @@
                 }
             });
 
+            // 雨效透明度：拖动时实时预览
+            this.rainOpacityRange?.addEventListener('input', () => {
+                const pct = parseInt(this.rainOpacityRange.value, 10) || 0;
+                if (this.rainOpacityValue) this.rainOpacityValue.textContent = pct + '%';
+                if (window.App.Weather) App.Weather.setOpacity(pct / 100);
+            });
+
+            // 雨效颜色：选择时实时预览
+            const applyRainColors = () => {
+                const colors = {
+                    dark: this.rainColorDark?.value || '#87ceeb',
+                    light: this.rainColorLight?.value || '#2a8fd4'
+                };
+                window.App.state.rainColors = colors;
+                if (window.App.Weather) App.Weather.setRainColors(colors);
+            };
+            this.rainColorDark?.addEventListener('input', applyRainColors);
+            this.rainColorLight?.addEventListener('input', applyRainColors);
+
             this.addBookmarkBtn?.addEventListener('click', () => {
                 if (window.App.Bookmarks) App.Bookmarks.add();
             });
+
+            this.clearBookmarksBtn?.addEventListener('click', () => this._clearBookmarks());
 
             this.addCustomEngineBtn?.addEventListener('click', () => {
                 const engines = window.App.state.customEngines || [];
@@ -322,8 +454,15 @@
                 this._renderCustomEnginesEditor();
             });
 
+            this.clearEnginesBtn?.addEventListener('click', () => this._clearCustomEngines());
+
             this.applyCoordsBtn?.addEventListener('click', () => {
                 this._applyCustomCoordinates();
+            });
+
+            // 主题模式：切换时即时生效
+            this.selectThemeMode?.addEventListener('change', () => {
+                if (window.App.Theme) App.Theme.setMode(this.selectThemeMode.value);
             });
         }
     };

@@ -40,9 +40,8 @@
             this.createParticles();
             if (this.enabled) this.startAnimation();
 
-            // 监听系统主题变化
-            const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
-            mediaQuery.addEventListener('change', () => {
+            // 监听主题变化
+            window.addEventListener('themechange', () => {
                 this.updateColors();
             });
         },
@@ -98,7 +97,8 @@
 
         /** 根据主题更新粒子颜色 */
         updateColors() {
-            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+            const isLight = window.App.Theme ? !App.Theme.isDark() : window.matchMedia('(prefers-color-scheme: light)').matches;
+            if (isLight) {
                 this.colors = {
                     line: 'rgba(80,100,140,0.25)',
                     glowStart: 'rgba(120,140,180,0.9)',

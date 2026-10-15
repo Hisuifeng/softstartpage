@@ -45,9 +45,13 @@
         currentEffectType: null, currentEffectIntensity: 0,
         effectCanvas: null, effectCtx: null,
         particles: [], animFrameId: null,
+        // 雨/雪效全局透明度（0–1，设置面板 sp_rain_opacity）
+        effectOpacity: 1,
+        // 雨效颜色（按主题区分，设置面板 sp_rain_colors）
+        rainColors: { dark: '#87ceeb', light: '#2a8fd4' },
         // 天气图标缓存（Canvas 绘制用）
         weatherIcons: {},
-        isDarkTheme: !window.matchMedia('(prefers-color-scheme: light)').matches,
+        isDarkTheme: window.App.Theme ? App.Theme.isDark() : !window.matchMedia('(prefers-color-scheme: light)').matches,
 
         init(options = {}) {
             this.fabBtn = document.getElementById('weatherFab');
@@ -68,8 +72,11 @@
             // 预载天气 SVG 图标（作为 Canvas 图片，颜色跟随当前主题）
             this._loadWeatherIcons();
 
-            window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', e => {
-                this.isDarkTheme = !e.matches;
+            this.isDarkTheme = window.App.Theme ? App.Theme.isDark() : this.isDarkTheme;
+            window.addEventListener('themechange', e => {
+                this.isDarkTheme = e.detail ? e.detail.dark
+                    : (window.App.Theme ? App.Theme.isDark() : this.isDarkTheme);
+                this._loadWeatherIcons();
                 if (this.currentEffectType && this.currentEffectIntensity > 0) {
                     this.startEffect(this.currentEffectType, this.currentEffectIntensity);
                 }
@@ -79,6 +86,10 @@
             state.weatherEffectEnabled = options.weatherEffectEnabled !== undefined
                 ? options.weatherEffectEnabled
                 : App.Utils.load('sp_weather_effect', true);
+            this.effectOpacity = state.rainOpacity !== undefined
+                ? state.rainOpacity
+                : App.Utils.load('sp_rain_opacity', 1);
+            this.rainColors = state.rainColors || App.Utils.load('sp_rain_colors', { dark: '#87ceeb', light: '#2a8fd4' });
             state.customLat = App.Utils.load('sp_custom_lat', null);
             state.customLon = App.Utils.load('sp_custom_lon', null);
 
@@ -246,11 +257,6 @@
             const temp = Math.round(current.temperature_2m);
             const feel = Math.round(current.apparent_temperature);
             const humidity = current.relative_humidity_2m + '%';
-            const windSpeed = current.wind_speed_10m + ' km/h';
-            const windGust = current.wind_gusts_10m + ' km/h';
-            const windDir = current.wind_direction_10m + '°';
-            const rain = current.rain + ' mm';
-            const snowfall = current.snowfall + ' cm';
             const code = current.weather_code;
             const info = this.getWeatherInfo(code);
 
@@ -275,22 +281,54 @@
             const mainInfo = document.getElementById('weatherMainInfo');
             if (mainInfo) {
                 mainInfo.innerHTML = `
-                    <div class="info-item"><strong>城市：</strong>${loc.city} ${loc.country}</div>
-                    <div class="info-item"><strong>天气：</strong>${App.Utils.svg(info.icon)} ${info.desc}</div>
-                    <div class="info-item"><strong>温度：</strong>${temp}° (体感 ${feel}°)</div>
-                    <div class="info-item"><strong>湿度：</strong>${humidity}</div>
-                    <div class="info-item"><strong>降雨：</strong>${rain}</div>
-                    <div class="info-item"><strong>降雪：</strong>${snowfall}</div>
-                    <div class="info-item"><strong>风速：</strong>${windSpeed}</div>
-                    <div class="info-item"><strong>阵风：</strong>${windGust}</div>
-                    <div class="info-item"><strong>风向：</strong>${windDir}</div>
-                    <div class="info-item"><strong>最高/最低：</strong>${maxTemp}° / ${minTemp}°</div>
-                    <div class="info-item"><strong>紫外线：</strong>${uvMax} (晴空 ${uvClear})</div>
-                    <div class="info-item"><strong>日出 - 日落：</strong>${sunrise} - ${sunset}</div>
+                    <div class="weather-hero">
+                        <div class="weather-hero-primary">
+                            <div class="weather-hero-icon">${App.Utils.svg(info.icon)}</div>
+                            <div class="weather-hero-tempwrap">
+                                <div class="weather-hero-temp">${temp}<span class="unit">°</span></div>
+                                <div class="weather-hero-desc">${info.desc}</div>
+                            </div>
+                        </div>
+                        <div class="weather-hero-meta">
+                            <div class="weather-hero-city">${App.Utils.svg('location')}<span>${loc.city} ${loc.country}</span></div>
+                            <div class="weather-hero-stats">
+                                <div class="hero-stat"><span class="hero-stat-label">最高</span><span class="hero-stat-value">${maxTemp}°</span></div>
+                                <div class="hero-stat"><span class="hero-stat-label">最低</span><span class="hero-stat-value">${minTemp}°</span></div>
+                                <div class="hero-stat"><span class="hero-stat-label">体感</span><span class="hero-stat-value">${feel}°</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="weather-details">
+                        ${this._infoCard('droplet', '湿度', humidity)}
+                        ${this._infoCard('wind', '风速', current.wind_speed_10m, 'km/h')}
+                        ${this._infoCard('wind', '阵风', current.wind_gusts_10m, 'km/h')}
+                        ${this._infoCard('location', '风向', this._windDirText(current.wind_direction_10m))}
+                        ${this._infoCard('rain', '降雨', current.rain, 'mm')}
+                        ${this._infoCard('snowflake', '降雪', current.snowfall, 'cm')}
+                        ${this._infoCard('sun', '紫外线', uvMax, `晴空 ${uvClear}`)}
+                        ${this._infoCard('sunrise', '日出', sunrise)}
+                        ${this._infoCard('sunset', '日落', sunset)}
+                    </div>
                 `;
             }
 
             this.drawWeatherChart(data);
+        },
+
+        /** 生成一张天气详情卡片 */
+        _infoCard(icon, label, value, sub = '') {
+            return `<div class="weather-detail-card">
+                <div class="weather-detail-head">${App.Utils.svg(icon)}<span>${label}</span></div>
+                <div class="weather-detail-value">${value}${sub ? `<span class="weather-detail-unit">${sub}</span>` : ''}</div>
+            </div>`;
+        },
+
+        /** 风向角度转中文方位 */
+        _windDirText(deg) {
+            if (deg === null || deg === undefined || isNaN(deg)) return '--';
+            const dirs = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
+            const idx = Math.round((((deg % 360) + 360) % 360) / 45) % 8;
+            return `${dirs[idx]} ${Math.round(deg)}°`;
         },
 
         // ==================== 图表绘制 ====================
@@ -564,7 +602,7 @@
                         y: Math.random() * -canvasHeight,
                         length: Math.random() * 10 + 5 * (intensity / 5),
                         speed: Math.random() * 8 + 5 * (intensity / 3),
-                        opacity: Math.random() * 0.3 + 0.2
+                        opacity: Math.random() * 0.35 + 0.55
                     });
                 } else { // snow
                     this.particles.push({
@@ -617,11 +655,13 @@
 
             this.particles.forEach(p => {
                 if (type === 'rain') {
-                    const color = this.isDarkTheme ? 'rgba(174,194,224,' : 'rgba(40,60,100,';
+                    // 雨效颜色按主题区分（暗色/亮色），默认天蓝，可在设置中修改
+                    const hex = this.isDarkTheme ? this.rainColors.dark : this.rainColors.light;
+                    const rgb = this._hexToRgb(hex) || (this.isDarkTheme ? '135,206,235' : '42,143,212');
                     ctx.beginPath();
                     ctx.moveTo(p.x, p.y);
                     ctx.lineTo(p.x - 1, p.y + p.length);
-                    ctx.strokeStyle = color + p.opacity + ')';
+                    ctx.strokeStyle = 'rgba(' + rgb + ',' + (p.opacity * this.effectOpacity) + ')';
                     ctx.lineWidth = 1;
                     ctx.stroke();
                     p.y += p.speed;
@@ -630,7 +670,7 @@
                         p.x = Math.random() * canvasWidth;
                     }
                 } else if (type === 'snow') {
-                    const color = 'rgba(255,255,255,' + p.opacity + ')';
+                    const color = 'rgba(255,255,255,' + (p.opacity * this.effectOpacity) + ')';
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
                     ctx.fillStyle = color;
@@ -655,6 +695,33 @@
             } else if (this.currentEffectType && this.currentEffectIntensity > 0) {
                 this.startEffect(this.currentEffectType, this.currentEffectIntensity);
             }
+        },
+
+        /** 设置雨/雪效透明度（0–1，实时按帧生效） */
+        setOpacity(value) {
+            const v = parseFloat(value);
+            this.effectOpacity = isNaN(v) ? 1 : Math.max(0, Math.min(1, v));
+            window.App.state.rainOpacity = this.effectOpacity;
+        },
+
+        /** 设置雨效颜色（按主题，实时按帧生效） */
+        setRainColors(colors) {
+            if (!colors) return;
+            this.rainColors = {
+                dark: colors.dark || this.rainColors.dark,
+                light: colors.light || this.rainColors.light
+            };
+            window.App.state.rainColors = this.rainColors;
+        },
+
+        /** 将 #rgb / #rrggbb 转为 "r,g,b" 字符串，供 rgba() 拼装 */
+        _hexToRgb(hex) {
+            if (!hex) return null;
+            let h = String(hex).trim().replace(/^#/, '');
+            if (h.length === 3) h = h.split('').map(c => c + c).join('');
+            if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+            const num = parseInt(h, 16);
+            return [(num >> 16) & 255, (num >> 8) & 255, num & 255].join(',');
         },
 
         // ==================== 事件绑定 ====================

@@ -37,16 +37,19 @@
 
             // 构建时间 HTML
             let timeHtml;
+            let ampmHtml = '';
             if (tf.hour24) {
-                timeHtml = `${String(h24).padStart(2, '0')}<span class="colon">:</span>${m}`;
+                timeHtml = `<span class="clock-grad">${String(h24).padStart(2, '0')}</span><span class="colon clock-grad">:</span><span class="clock-grad">${m}</span>`;
             } else {
                 const h12 = h24 % 12 || 12;
                 const ampm = h24 >= 12 ? 'PM' : 'AM';
-                timeHtml = `${String(h12).padStart(2, '0')}<span class="colon">:</span>${m} <span style="font-size:0.4em;opacity:0.55">${ampm}</span>`;
+                timeHtml = `<span class="clock-grad">${String(h12).padStart(2, '0')}</span><span class="colon clock-grad">:</span><span class="clock-grad">${m}</span>`;
+                ampmHtml = ` <span style="font-size:0.4em;opacity:0.55">${ampm}</span>`;
             }
             if (tf.showSeconds) {
-                timeHtml += `<span class="colon" style="animation:none;opacity:0.35;font-size:0.7em;">:</span><span style="font-size:0.55em;opacity:0.5;">${s}</span>`;
+                timeHtml += `<span class="colon clock-grad" style="animation:none;opacity:0.35;font-size:0.7em;">:</span><span class="clock-grad" style="font-size:0.55em;opacity:0.5;">${s}</span>`;
             }
+            timeHtml += ampmHtml;
             this.clockEl.innerHTML = timeHtml;
 
             // 构建日期字符串

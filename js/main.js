@@ -19,15 +19,22 @@
         fallbackAPI: App.Utils.load('sp_fallback', 'baidu'),
         modifierKey: App.Utils.load('sp_modifier', 'ctrl'),
         weatherEffectEnabled: App.Utils.load('sp_weather_effect', true),
+        rainOpacity: App.Utils.load('sp_rain_opacity', 1),
+        rainColors: App.Utils.load('sp_rain_colors', { dark: '#87ceeb', light: '#2a8fd4' }),
+        bookmarkInPage: App.Utils.load('sp_bookmark_inpage', true),
         particlesEnabled: App.Utils.load('sp_particles', true),
         parallaxEnabled: App.Utils.load('sp_parallax', true),
         defaultWallpaperEnabled: App.Utils.load('sp_default_wallpaper', true),
         customEngines: App.Utils.load('sp_custom_engines', []),
-        currentEngineKey: App.Utils.load('sp_engine', 'google')
+        currentEngineKey: App.Utils.load('sp_engine', 'google'),
+        themeMode: App.Utils.load('sp_theme', 'auto')
     };
     window.App.state = state;
 
     // ========== 按依赖顺序初始化各个模块 ==========
+
+    // 0. 主题（最先初始化，供后续模块读取当前主题）
+    if (App.Theme) App.Theme.init(state.themeMode);
 
     // 1. 粒子背景（完全独立，只需挂载画布）
     if (App.Particles) {

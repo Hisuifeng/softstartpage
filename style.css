@@ -1,5 +1,6 @@
 /* ========== 主题变量 ========== */
 :root {
+    color-scheme: dark;
     --bg-deep: #0a0e17;
     --bg-surface: rgba(20, 25, 35, 0.65);
     --bg-surface-hover: rgba(30, 36, 48, 0.8);
@@ -79,8 +80,7 @@
     --grid-color: rgba(128, 128, 128, 0.15);
 }
 
-@media (prefers-color-scheme: light) {
-    :root {
+:root[data-theme="light"] {
         --bg-deep: #f0f2f5;
         --bg-surface: rgba(255, 255, 255, 0.75);
         --bg-surface-hover: rgba(255, 255, 255, 0.9);
@@ -150,7 +150,6 @@
         --feel-color: #3b82f6;
         --precip-color: rgba(59, 130, 246, 0.4);
         --grid-color: rgba(0, 0, 0, 0.1);
-    }
 }
 
 /* ========== 全局 ========== */
@@ -166,7 +165,12 @@ body {
     height: 100%;
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    background: transparent;
+    background-color: var(--bg-deep);
+    background-image:
+        radial-gradient(circle at 18% 12%, var(--accent-dim), transparent 42%),
+        radial-gradient(circle at 82% 88%, var(--accent-dim), transparent 42%);
+    background-attachment: fixed;
+    transition: background-color 0.4s ease;
     -webkit-font-smoothing: antialiased;
     user-select: none;
     -webkit-user-select: none;
@@ -278,9 +282,20 @@ body {
     font-weight: 200;
     letter-spacing: 0.03em;
     color: var(--text-primary);
-    text-shadow: 0 0 60px var(--accent-dim);
+    filter: drop-shadow(0 0 34px var(--accent-dim));
     font-variant-numeric: tabular-nums;
-    font-family: 'SF Pro Display', monospace;
+    font-family: 'SF Pro Display', 'Segoe UI', system-ui, monospace;
+}
+
+/* 渐变仅作用于数字片段，避免 background-clip:text 冻结 .colon 的偏移 */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    .clock-grad {
+        background: linear-gradient(180deg, var(--text-primary) 38%, var(--accent) 155%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+    }
 }
 
 .colon {
@@ -288,6 +303,9 @@ body {
     display: inline-block;
     width: 0.5em;
     text-align: center;
+    /* 冒号字形偏下（x 高度 vs 数字高度），向上微调使其与数字视觉居中 */
+    position: relative;
+    top: -0.1em;
 }
 
 .date-text {
@@ -694,9 +712,9 @@ body {
     background: var(--settings-panel-bg);
     backdrop-filter: blur(30px);
     border-radius: var(--radius-lg);
-    max-width: 560px;
+    max-width: 860px;
     width: 100%;
-    max-height: 85vh;
+    max-height: 88vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -742,7 +760,64 @@ body {
     color: var(--text-primary);
 }
 
+.settings-panel-main {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.settings-sidebar {
+    flex-shrink: 0;
+    width: 176px;
+    padding: 16px 10px;
+    border-right: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+
+.settings-sidebar::-webkit-scrollbar {
+    display: none;
+}
+
+.settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-family: inherit;
+    text-align: left;
+    white-space: nowrap;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.settings-nav-item:hover {
+    background: var(--btn-hover-bg);
+    color: var(--text-primary);
+}
+
+.settings-nav-item.active {
+    background: var(--btn-primary-bg);
+    color: var(--accent);
+}
+
+.settings-nav-item .svg-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
 .settings-panel-body {
+    position: relative;
     flex: 1;
     overflow-y: auto;
     padding: 20px 22px;
@@ -899,6 +974,101 @@ body {
     box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
+/* 滑块（雨效透明度等） */
+.settings-range-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.settings-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 130px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--input-border);
+    outline: none;
+    cursor: pointer;
+}
+
+.settings-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 1px solid var(--accent-strong);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.settings-range::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+.settings-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--accent-strong);
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+}
+
+.settings-range-value {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    min-width: 40px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 颜色选择（雨效颜色等） */
+.settings-color-wrap {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+}
+
+.settings-color-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    cursor: pointer;
+}
+
+.settings-color {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 34px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    background: none;
+    cursor: pointer;
+}
+
+.settings-color::-webkit-color-swatch-wrapper {
+    padding: 2px;
+}
+
+.settings-color::-webkit-color-swatch {
+    border: none;
+    border-radius: 5px;
+}
+
+.settings-color::-moz-color-swatch {
+    border: none;
+    border-radius: 5px;
+}
+
 /* 按钮 */
 .btn {
     padding: 9px 18px;
@@ -983,6 +1153,11 @@ body {
     border-color: var(--accent-strong);
     background: var(--accent-dim);
     color: var(--accent);
+}
+
+.settings-clear-btn {
+    margin-top: 8px;
+    justify-content: center;
 }
 
 .settings-panel-footer {
@@ -1302,24 +1477,192 @@ body {
 
 .weather-main-info {
     display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
+    flex-direction: column;
+    gap: 18px;
 }
 
-.weather-main-info .info-item {
+/* 天气主区（Hero） */
+.weather-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 22px 24px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    background:
+        radial-gradient(circle at 12% 20%, var(--accent-dim), transparent 55%),
+        var(--settings-row-bg);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.weather-hero-primary {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+}
+
+.weather-hero-icon {
+    flex-shrink: 0;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-strong);
+    box-shadow: 0 0 24px var(--accent-dim);
+}
+
+.weather-hero-icon .svg-icon {
+    width: 34px;
+    height: 34px;
+}
+
+.weather-hero-temp {
+    font-size: 3rem;
+    line-height: 1;
+    font-weight: 300;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.weather-hero-temp .unit {
+    font-size: 1.4rem;
+    vertical-align: super;
+    color: var(--text-secondary);
+}
+
+.weather-hero-desc {
+    margin-top: 6px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+.weather-hero-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    text-align: right;
+}
+
+.weather-hero-city {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: var(--settings-row-bg);
-    padding: 8px 14px;
-    border-radius: var(--radius-sm);
     font-size: 0.9rem;
     color: var(--text-secondary);
 }
 
-.info-item strong {
+.weather-hero-city .svg-icon {
+    width: 15px;
+    height: 15px;
+    color: var(--accent);
+}
+
+.weather-hero-stats {
+    display: flex;
+    gap: 18px;
+}
+
+.hero-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.hero-stat-label {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+}
+
+.hero-stat-value {
+    font-size: 1.1rem;
+    font-weight: 500;
     color: var(--text-primary);
-    margin-right: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 天气详情网格 */
+.weather-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    gap: 10px;
+}
+
+.weather-detail-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--settings-row-bg);
+    border: 1px solid var(--glass-border);
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.weather-detail-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-strong);
+    background: var(--btn-hover-bg);
+}
+
+.weather-detail-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+}
+
+.weather-detail-head .svg-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--accent);
+}
+
+.weather-detail-value {
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.weather-detail-unit {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-tertiary);
+}
+
+/* 图表区块 */
+.weather-chart-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.weather-section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.weather-section-title .svg-icon {
+    width: 15px;
+    height: 15px;
+    color: var(--accent);
 }
 
 /* 图例 */
@@ -1437,10 +1780,7 @@ body {
 }
 
 .weather-main-info .svg-icon {
-    width: 18px;
-    height: 18px;
-    margin-right: 3px;
-    vertical-align: -3px;
+    vertical-align: middle;
 }
 
 .search-clear .svg-icon,
@@ -1459,4 +1799,269 @@ body {
     width: 14px;
     height: 14px;
     margin-right: 3px;
+}
+
+/* ========== 美化增强 ========== */
+::selection {
+    background: var(--accent-strong);
+    color: var(--text-primary);
+}
+
+/* 全局滚动条 */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 99px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+    background-clip: content-box;
+}
+
+/* 键盘焦点可见性 */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.search-wrapper:focus-within,
+.search-input:focus-visible,
+.settings-input:focus,
+.settings-select:focus {
+    outline: none;
+}
+
+/* 玻璃面板高光与描边 */
+.settings-panel,
+.world-clock-panel,
+.weather-panel {
+    box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.settings-panel-header,
+.world-clock-header,
+.weather-panel-header {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent);
+    backdrop-filter: blur(4px);
+}
+
+/* 时钟冒号呼吸 */
+.clock .colon {
+    animation: blinkColon 1.4s ease-in-out infinite;
+}
+
+/* 书签入场与悬停 */
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.94);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.bookmark-item {
+    animation: popIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.bookmark-item:nth-child(1) { animation-delay: 0.28s; }
+.bookmark-item:nth-child(2) { animation-delay: 0.33s; }
+.bookmark-item:nth-child(3) { animation-delay: 0.38s; }
+.bookmark-item:nth-child(4) { animation-delay: 0.43s; }
+.bookmark-item:nth-child(5) { animation-delay: 0.48s; }
+.bookmark-item:nth-child(6) { animation-delay: 0.53s; }
+.bookmark-item:nth-child(7) { animation-delay: 0.58s; }
+.bookmark-item:nth-child(8) { animation-delay: 0.63s; }
+.bookmark-item:nth-child(9) { animation-delay: 0.68s; }
+.bookmark-item:nth-child(10) { animation-delay: 0.73s; }
+.bookmark-item:nth-child(n+11) { animation-delay: 0.78s; }
+
+.bookmark-icon-wrapper {
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+}
+
+.bookmark-item:hover .bookmark-icon-wrapper {
+    transform: scale(1.08) translateY(-2px);
+    box-shadow: var(--shadow-md), 0 0 24px var(--accent-dim);
+    background: var(--accent-dim);
+}
+
+.bookmark-item:hover .bookmark-fallback {
+    color: var(--accent);
+    opacity: 0.9;
+}
+
+/* 引擎按钮激活脉冲 */
+@keyframes enginePulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 12px var(--accent-dim);
+    }
+
+    50% {
+        box-shadow: 0 0 22px 2px var(--accent-dim);
+    }
+}
+
+.engine-btn.active {
+    animation: enginePulse 3.2s ease-in-out infinite;
+}
+
+/* 设置导航指示条 */
+.settings-nav-item {
+    position: relative;
+}
+
+.settings-nav-item::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 50%;
+    width: 3px;
+    height: 0;
+    border-radius: 3px;
+    background: var(--accent);
+    transform: translateY(-50%);
+    transition: height 0.25s ease;
+}
+
+.settings-nav-item.active::before {
+    height: 55%;
+}
+
+/* 设置行悬停 */
+.settings-row {
+    transition: background var(--transition-fast);
+}
+
+.settings-row:hover {
+    background: var(--btn-hover-bg);
+}
+
+/* 开关微光 */
+.toggle-switch input:checked+.toggle-slider {
+    box-shadow: 0 0 12px var(--accent-dim);
+}
+
+/* 关闭按钮 */
+.settings-close-btn {
+    transition: all var(--transition-fast);
+}
+
+.settings-close-btn:hover {
+    transform: rotate(90deg);
+}
+
+/* 按钮轻微上浮 */
+.btn,
+.file-upload-label,
+.settings-clear-btn {
+    transition: all var(--transition-fast);
+}
+
+.btn:hover,
+.file-upload-label:hover {
+    transform: translateY(-1px);
+}
+
+.btn:active,
+.file-upload-label:active {
+    transform: translateY(0) scale(0.97);
+}
+
+/* FAB 光晕 */
+.settings-fab:hover {
+    box-shadow: var(--shadow-lg), 0 0 26px var(--accent-dim);
+}
+
+/* Toast 位移过渡 */
+.toast {
+    transform: translateX(-50%) translateY(8px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+/* 减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 640px) {
+    .settings-overlay {
+        padding: 10px;
+    }
+
+    .settings-sidebar {
+        display: none;
+    }
+
+    .settings-panel {
+        max-height: 92vh;
+    }
+
+    .settings-panel-body {
+        padding: 16px;
+    }
+
+    .weather-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 18px;
+    }
+
+    .weather-hero-meta {
+        align-items: flex-start;
+        text-align: left;
+        width: 100%;
+    }
+
+    .weather-hero-icon {
+        width: 54px;
+        height: 54px;
+    }
+
+    .weather-hero-icon .svg-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .weather-hero-temp {
+        font-size: 2.4rem;
+    }
+
+    .weather-details {
+        grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    }
 }

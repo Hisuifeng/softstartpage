@@ -43,6 +43,9 @@
         renderMain() {
             if (!this.mainContainer) return;
             const bookmarks = window.App.state.bookmarks;
+            // 页面内跳转（默认开启）：在当前标签页打开；关闭时新标签页打开
+            const inPage = window.App.state.bookmarkInPage !== false;
+            const targetAttr = inPage ? '' : ' target="_blank" rel="noopener noreferrer"';
             this.mainContainer.innerHTML = bookmarks.map(bm => {
                 const name = String(bm.name || '');
                 const url = String(bm.url || '');
@@ -52,7 +55,7 @@
                     ? `<img src="${App.Utils.escapeHtml(iconUrl)}" alt="" onerror="this.style.display='none'" onload="this.style.display='block';this.previousElementSibling.style.opacity='0'">`
                     : '';
                 return `
-                <a class="bookmark-item" href="${href}" target="_blank" rel="noopener noreferrer" title="${App.Utils.escapeHtml(name)}">
+                <a class="bookmark-item" href="${href}"${targetAttr} title="${App.Utils.escapeHtml(name)}">
                     <div class="bookmark-icon-wrapper">
                         <span class="bookmark-fallback">${App.Utils.escapeHtml(App.Utils.getFallbackChar(name))}</span>
                         ${img}
