@@ -23,6 +23,7 @@
         toggleParticles: null,
         toggleParallax: null,
         toggleDefaultWallpaper: null,
+        wallpaperPinStatus: null,
         toggleBookmarkInPage: null,
         selectThemeMode: null,
 
@@ -64,6 +65,7 @@
             this.toggleParticles = document.getElementById('toggleParticles');
             this.toggleParallax = document.getElementById('toggleParallax');
             this.toggleDefaultWallpaper = document.getElementById('toggleDefaultWallpaper');
+            this.wallpaperPinStatus = document.getElementById('wallpaperPinStatus');
             this.toggleBookmarkInPage = document.getElementById('toggleBookmarkInPage');
             this.selectThemeMode = document.getElementById('selectThemeMode');
 
@@ -213,7 +215,8 @@
             if (window.App.Parallax) App.Parallax.setEnabled(true);
             if (window.App.Weather) App.Weather.setOpacity(1);
             if (window.App.Weather) App.Weather.setRainColors({ dark: '#87ceeb', light: '#2a8fd4' });
-            if (window.App.Wallpaper) App.Wallpaper.applyToUI();
+            // 壁纸恢复默认（清除固定/自定义，回到主题默认随机）
+            if (window.App.Wallpaper) App.Wallpaper.set('none', '');
 
             if (window.App.Clock) App.Clock.refresh();
             // 书签与自定义搜索引擎保留，不随恢复默认清除
@@ -250,6 +253,10 @@
             if (this.toggleParticles) this.toggleParticles.checked = state.particlesEnabled !== false;
             if (this.toggleParallax) this.toggleParallax.checked = state.parallaxEnabled !== false;
             if (this.toggleDefaultWallpaper) this.toggleDefaultWallpaper.checked = state.defaultWallpaperEnabled !== false;
+            if (this.wallpaperPinStatus) {
+                const pinned = window.App.Wallpaper && App.Wallpaper.isPinned && App.Wallpaper.isPinned();
+                this.wallpaperPinStatus.classList.toggle('hidden', !pinned);
+            }
             if (this.toggleBookmarkInPage) this.toggleBookmarkInPage.checked = state.bookmarkInPage !== false;
             if (this.selectThemeMode) {
                 this.selectThemeMode.value = (window.App.Theme && App.Theme.mode) || 'auto';

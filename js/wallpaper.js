@@ -12,9 +12,16 @@
         layer: null,
         preview: null,
         urlInput: null,
+        hint: null,
+        hintMsg: null,
+        hintBtn: null,
+        hintLabel: null,
 
         // 当前壁纸状态
         wallpaper: null,
+
+        // 当前展示的仓库默认壁纸 URL（用于“固定该壁纸”）
+        _currentDefaultUrl: null,
 
         // 各主题默认壁纸列表缓存（静态托管下通过 HEAD 探测 img/wallpaper/{black|light}/）
         _defaults: { black: null, light: null },
@@ -70,14 +77,18 @@
             if (!this.layer) return;
             const dir = this._themeDir();
             const hide = () => {
+                this._currentDefaultUrl = null;
                 this.layer.style.backgroundImage = 'none';
                 this.layer.classList.add('hidden');
+                this._updateHint();
             };
 
             const render = (url) => {
                 if (!url) { hide(); return; }
+                this._currentDefaultUrl = url;
                 this.layer.style.backgroundImage = `url('${url}')`;
                 this.layer.classList.remove('hidden');
+                this._updateHint();
             };
 
             if (this._defaults[dir]) {
@@ -100,10 +111,19 @@
             this.layer = document.getElementById('wallpaper-layer');
             this.preview = document.getElementById('wallpaperPreview');
             this.urlInput = document.getElementById('wallpaperUrlInput');
+            this.hint = document.getElementById('wallpaperHint');
+            this.hintMsg = document.getElementById('wallpaperHintMsg');
+            this.hintBtn = document.getElementById('wallpaperPinBtn');
+            this.hintLabel = document.getElementById('wallpaperPinLabel');
 
             if (!this.layer) {
                 console.warn('未找到壁纸图层，跳过壁纸模块');
                 return;
+            }
+
+            // 固定/取消固定按钮
+            if (this.hintBtn) {
+                this.hintBtn.addEventListener('click', () => this.togglePin());
             }
 
             // 初始化状态
@@ -147,26 +167,121 @@
         applyToUI() {
             if (!this.layer) return;
 
+            // 固定的仓库壁纸
+            if (this.wallpaper.type === 'fixed') {
+                const url = this._safeRepoUrl(this.wallpaper.value);
+                if (url) {
+                    this._currentDefaultUrl = url;
+                    // 开关关闭时隐藏壁纸（固定状态仍保留，设置面板仍显示“壁纸已固定”）
+                    if (window.App.state.defaultWallpaperEnabled !== false) {
+                        this.layer.style.backgroundImage = `url('${url}')`;
+                        this.layer.classList.remove('hidden');
+                        if (this.preview) {
+                            this.preview.style.backgroundImage = `url('${url}')`;
+                        }
+                    } else {
+                        this.layer.style.backgroundImage = 'none';
+                        this.layer.classList.add('hidden');
+                        if (this.preview) {
+                            this.preview.style.backgroundImage = 'none';
+                        }
+                    }
+                    this._updateHint();
+                    return;
+                }
+                // 值非法则退化为未设置
+                this.wallpaper = { type: 'none', value: '' };
+            }
+
             if (this.wallpaper.type === 'url' || this.wallpaper.type === 'local') {
                 const safeCss = this._sanitizeCssUrl(this.wallpaper.value);
                 if (safeCss) {
+                    this._currentDefaultUrl = null;
                     this.layer.style.backgroundImage = `url('${safeCss}')`;
                     this.layer.classList.remove('hidden');
                     if (this.preview) {
                         this.preview.style.backgroundImage = `url('${safeCss}')`;
                     }
+                    this._updateHint();
                     return;
                 }
             }
             // 未设置壁纸 → 若开启"默认随机壁纸"则使用当前主题的默认随机壁纸
             if (window.App.state.defaultWallpaperEnabled !== false) {
                 this._applyDefaultForTheme();
-            } else if (this.layer) {
-                this.layer.style.backgroundImage = 'none';
-                this.layer.classList.add('hidden');
+            } else {
+                this._currentDefaultUrl = null;
+                if (this.layer) {
+                    this.layer.style.backgroundImage = 'none';
+                    this.layer.classList.add('hidden');
+                }
             }
             if (this.preview) {
                 this.preview.style.backgroundImage = 'none';
+            }
+            this._updateHint();
+        },
+
+        /**
+         * 校验并规范化仓库壁纸相对路径
+         * 仅允许 img/wallpaper/{black|light}/wallpaper{n}.jpg
+         * @param {string} value
+         * @returns {string} 合法则返回该路径，否则返回空串
+         */
+        _safeRepoUrl(value) {
+            const s = String(value || '').trim();
+            return /^img\/wallpaper\/(black|light)\/wallpaper\d+\.(jpg|jpeg|png|webp)$/i.test(s) ? s : '';
+        },
+
+        /** 当前是否为固定的仓库壁纸 */
+        isPinned() {
+            return !!this.wallpaper && this.wallpaper.type === 'fixed';
+        },
+
+        /** 固定当前展示的仓库默认壁纸 */
+        pin() {
+            const url = this._currentDefaultUrl;
+            if (!url || !this._safeRepoUrl(url)) {
+                App.Utils.showToast('当前壁纸无法固定');
+                return;
+            }
+            this.wallpaper = { type: 'fixed', value: url };
+            App.Utils.save('sp_wallpaper', this.wallpaper);
+            this.applyToUI();
+            App.Utils.showToast('已固定该壁纸');
+        },
+
+        /** 取消固定，恢复默认随机壁纸 */
+        unpin() {
+            this.wallpaper = { type: 'none', value: '' };
+            App.Utils.save('sp_wallpaper', this.wallpaper);
+            this.applyToUI();
+            App.Utils.showToast('已取消固定');
+        },
+
+        /** 切换固定状态 */
+        togglePin() {
+            if (this.isPinned()) this.unpin();
+            else this.pin();
+        },
+
+        /** 更新右上角提示条：仅在使用仓库壁纸（默认随机或已固定）且壁纸可见时显示 */
+        _updateHint() {
+            if (!this.hint) return;
+            const pinned = this.isPinned();
+            const visible = this.layer && !this.layer.classList.contains('hidden');
+            const showDefault = this.wallpaper && this.wallpaper.type === 'none'
+                && window.App.state.defaultWallpaperEnabled !== false
+                && this._currentDefaultUrl
+                && visible;
+
+            if (visible && (pinned || showDefault)) {
+                this.hint.classList.remove('hidden');
+                this.hint.classList.toggle('pinned', pinned);
+                if (this.hintLabel) this.hintLabel.textContent = pinned ? '取消固定' : '固定该壁纸';
+                if (this.hintBtn) this.hintBtn.title = pinned ? '取消固定' : '固定该壁纸';
+            } else {
+                this.hint.classList.add('hidden');
             }
         },
 

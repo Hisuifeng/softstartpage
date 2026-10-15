@@ -236,6 +236,123 @@ body {
     pointer-events: none;
 }
 
+/* 仓库壁纸固定提示（右上角） */
+.wallpaper-hint {
+    position: fixed;
+    top: 22px;
+    right: 24px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: var(--radius-xl);
+    background: transparent;
+    border: 1px solid transparent;
+    box-shadow: none;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    opacity: 1;
+    transition: opacity 0.35s ease, transform 0.35s ease, background 0.3s ease,
+        border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* 仅鼠标移到右上角（悬停）时才显示文字底部背景 */
+.wallpaper-hint:hover,
+.wallpaper-hint:focus-within {
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+.wallpaper-hint.hidden {
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+}
+
+.wallpaper-hint-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--accent);
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.wallpaper-hint-label {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color var(--transition-fast);
+}
+
+.wallpaper-hint-btn:hover .wallpaper-hint-label {
+    color: var(--text-primary);
+}
+
+/* 图钉图标：默认隐藏；固定后显示 */
+.wallpaper-hint .wallpaper-hint-icon {
+    display: none;
+    width: 16px;
+    height: 16px;
+}
+
+.wallpaper-hint.pinned .wallpaper-hint-icon {
+    display: inline-block;
+    color: var(--accent);
+}
+
+/* 固定后：只保留图钉图标，悬停时才展开“取消固定” */
+.wallpaper-hint.pinned .wallpaper-hint-msg,
+.wallpaper-hint.pinned .wallpaper-hint-label {
+    display: none;
+}
+
+.wallpaper-hint.pinned:hover .wallpaper-hint-label,
+.wallpaper-hint.pinned:focus-within .wallpaper-hint-label {
+    display: inline;
+}
+
+.wallpaper-pin-status {
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 20px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 500;
+    vertical-align: middle;
+}
+
+.wallpaper-pin-status.hidden {
+    display: none;
+}
+
+.settings-hint {
+    margin: 10px 2px 0;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: var(--text-tertiary);
+}
+
+.settings-hint a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color var(--transition-fast);
+}
+
+.settings-hint a:hover {
+    color: var(--text-primary);
+}
+
 /* 粒子 */
 #particle-canvas {
     position: fixed;
