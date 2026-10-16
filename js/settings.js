@@ -38,6 +38,11 @@
         customLonInput: null,
         applyCoordsBtn: null,
 
+        // 天气数据源与 UAPI 定位参数
+        selectWeatherSource: null,
+        weatherCityInput: null,
+        weatherAdcodeInput: null,
+
         saveBtn: null,
         cancelBtn: null,
         resetBtn: null,
@@ -75,6 +80,10 @@
             this.customLonInput = document.getElementById('customLonInput');
             this.applyCoordsBtn = document.getElementById('applyCustomCoords');
 
+            this.selectWeatherSource = document.getElementById('selectWeatherSource');
+            this.weatherCityInput = document.getElementById('weatherCityInput');
+            this.weatherAdcodeInput = document.getElementById('weatherAdcodeInput');
+
             this.saveBtn = document.getElementById('btnSaveSettings');
             this.cancelBtn = document.getElementById('btnCancelSettings');
             this.resetBtn = document.getElementById('btnResetDefaults');
@@ -89,6 +98,7 @@
 
             this._bindEvents();
             this._initSidebar();
+            this._toggleLocationFields(window.App.state?.weatherSource);
         },
 
         open() {
@@ -148,6 +158,16 @@
             App.Utils.save('sp_rain_colors', rainColors);
             if (window.App.Weather) App.Weather.setRainColors(rainColors);
 
+            // 天气数据源与定位参数（UAPI 用 city/adcode，Open-Meteo 用经纬度）
+            const prevWeather = [state.weatherSource, state.weatherCity, state.weatherAdcode].join('|');
+            state.weatherSource = this.selectWeatherSource?.value || 'uapi';
+            state.weatherCity = (this.weatherCityInput?.value || '').trim();
+            state.weatherAdcode = (this.weatherAdcodeInput?.value || '').trim();
+            App.Utils.save('sp_weather_source', state.weatherSource);
+            App.Utils.save('sp_weather_city', state.weatherCity);
+            App.Utils.save('sp_weather_adcode', state.weatherAdcode);
+            const weatherChanged = prevWeather !== [state.weatherSource, state.weatherCity, state.weatherAdcode].join('|');
+
             const particles = this.toggleParticles?.checked ?? false;
             state.particlesEnabled = particles;
             App.Utils.save('sp_particles', particles);
@@ -184,6 +204,8 @@
 
             if (window.App.Clock) App.Clock.refresh();
             if (window.App.Weather) App.Weather.handleEffectToggle(weatherEffect);
+            // 数据源 / 定位参数变化时重新拉取天气
+            if (window.App.Weather && weatherChanged) App.Weather.handleSourceChange();
 
             this.close();
             App.Utils.showToast('设置已保存');
@@ -212,6 +234,13 @@
             state.customLon = null;
             App.Utils.save('sp_custom_lat', null);
             App.Utils.save('sp_custom_lon', null);
+            // 天气数据源与定位参数恢复默认（UAPI + IP 自动定位）
+            state.weatherSource = 'uapi';
+            state.weatherCity = '';
+            state.weatherAdcode = '';
+            App.Utils.save('sp_weather_source', 'uapi');
+            App.Utils.save('sp_weather_city', '');
+            App.Utils.save('sp_weather_adcode', '');
 
             App.Utils.save('sp_time', state.timeFormat);
             App.Utils.save('sp_engine', 'google');
@@ -284,6 +313,26 @@
             state.customLon = lon;
             if (this.customLatInput) this.customLatInput.value = lat !== null ? lat : '';
             if (this.customLonInput) this.customLonInput.value = lon !== null ? lon : '';
+
+            // 同步天气数据源与定位参数
+            if (this.selectWeatherSource) {
+                this.selectWeatherSource.value = state.weatherSource === 'open-meteo' ? 'open-meteo' : 'uapi';
+            }
+            if (this.weatherCityInput) this.weatherCityInput.value = state.weatherCity || '';
+            if (this.weatherAdcodeInput) this.weatherAdcodeInput.value = state.weatherAdcode || '';
+
+            // 按数据源显示对应定位项
+            this._toggleLocationFields(state.weatherSource);
+        },
+
+        /** 天气数据源切换：UAPI 显示城市名/Adcode，Open-Meteo 显示经纬度 */
+        _toggleLocationFields(source) {
+            const src = source || this.selectWeatherSource?.value || window.App.state?.weatherSource || 'uapi';
+            const isOpenMeteo = src === 'open-meteo';
+            const uapiFields = document.getElementById('uapiLocationFields');
+            const omFields = document.getElementById('openMeteoLocationFields');
+            if (uapiFields) uapiFields.hidden = isOpenMeteo;
+            if (omFields) omFields.hidden = !isOpenMeteo;
         },
 
         _renderCustomEnginesEditor() {
@@ -359,11 +408,13 @@
                 App.Utils.save('sp_custom_lon', lonNum);
                 window.App.state.customLat = latNum;
                 window.App.state.customLon = lonNum;
-                App.Utils.showToast('坐标已保存，天气即将更新');
+                App.Utils.showToast(window.App.state.weatherSource === 'uapi'
+                    ? '坐标已保存，仅对 Open-Meteo 数据源生效'
+                    : '坐标已保存，天气即将更新');
             }
 
-            // 刷新天气
-            if (window.App.Weather) {
+            // 经纬度仅 Open-Meteo 使用，刷新时按当前数据源判断
+            if (window.App.Weather && window.App.state.weatherSource !== 'uapi') {
                 App.Weather.updateWeatherFab();
             }
         },
@@ -540,6 +591,11 @@
 
             this.applyCoordsBtn?.addEventListener('click', () => {
                 this._applyCustomCoordinates();
+            });
+
+            // 天气数据源切换：即时切换显示的定位项
+            this.selectWeatherSource?.addEventListener('change', () => {
+                this._toggleLocationFields();
             });
 
             // 主题模式：切换时即时生效

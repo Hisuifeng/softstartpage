@@ -42,6 +42,16 @@
         },
         WMO_SNOW_MAP: { 71: 3, 73: 5, 75: 8, 77: 4, 85: 4, 86: 6 },
 
+        // UAPI 生活指数：键 → 中文名（顺序即展示顺序，共 18 项）
+        LIFE_INDICES: [
+            ['clothing', '穿衣'], ['uv', '紫外线'], ['car_wash', '洗车'],
+            ['drying', '晾晒'], ['air_conditioner', '空调'], ['cold_risk', '感冒'],
+            ['exercise', '运动'], ['comfort', '舒适度'], ['travel', '旅游'],
+            ['fishing', '钓鱼'], ['allergy', '过敏'], ['sunscreen', '防晒'],
+            ['mood', '心情'], ['beer', '啤酒'], ['umbrella', '雨伞'],
+            ['traffic', '交通'], ['air_purifier', '空气净化'], ['pollen', '花粉']
+        ],
+
         currentEffectType: null, currentEffectIntensity: 0,
         effectCanvas: null, effectCtx: null,
         particles: [], animFrameId: null,
@@ -92,6 +102,10 @@
             this.rainColors = state.rainColors || App.Utils.load('sp_rain_colors', { dark: '#87ceeb', light: '#2a8fd4' });
             state.customLat = App.Utils.load('sp_custom_lat', null);
             state.customLon = App.Utils.load('sp_custom_lon', null);
+            // 天气数据源（uapi = uapis.cn，open-meteo = Open-Meteo/CMA）与 UAPI 定位参数
+            state.weatherSource = state.weatherSource || App.Utils.load('sp_weather_source', 'uapi');
+            state.weatherCity = state.weatherCity ?? App.Utils.load('sp_weather_city', '');
+            state.weatherAdcode = state.weatherAdcode ?? App.Utils.load('sp_weather_adcode', '');
 
             this._bindEvents();
             this.updateWeatherFab();
@@ -202,23 +216,203 @@
             } catch (uvErr) { console.warn('紫外线数据补齐失败', uvErr); }
         },
 
-        // ==================== 更新左下角按钮 ====================
-        async updateWeatherFab() {
-            const location = await this.getLocation();
-            const weatherData = await this.getWeather(location.lat, location.lon);
-            if (!weatherData || !weatherData.current) return;
-            this.currentWeatherData = weatherData;
+        /**
+         * 统一入口：按当前数据源取天气。
+         * 'uapi' = uapis.cn（按 city/adcode 查询或 IP 自动定位）
+         * 'open-meteo' = Open-Meteo CMA（按经纬度查询）
+         */
+        async fetchWeather(forceRefresh = false) {
+            const state = window.App.state;
+            const source = state.weatherSource === 'open-meteo' ? 'open-meteo' : 'uapi';
+            if (source === 'uapi') return this._getWeatherUapi(forceRefresh);
+            const location = await this.getLocation(forceRefresh);
+            return this.getWeather(location.lat, location.lon, forceRefresh);
+        },
 
-            const current = weatherData.current;
+        // ==================== UAPI（uapis.cn）数据源 ====================
+        /**
+         * 调用 uapis.cn 天气接口并归一化为 Open-Meteo 风格结构（current/hourly/daily），
+         * 使详情面板与图表无需关心数据源即可渲染。
+         * 该接口有调用限制（4 QPS、建议 ≤40 次/分），故必须缓存 30 分钟再复用。
+         * 文档：https://uapis.cn/docs/api-reference/get-misc-weather
+         */
+        async _getWeatherUapi(forceRefresh = false) {
+            const state = window.App.state;
+            const city = String(state.weatherCity || '').trim();
+            const adcode = String(state.weatherAdcode || '').trim();
+            // 缓存键包含定位参数：切换城市 / 编码 / 数据源时自动失效，互不串味
+            const cacheKey = `sp_weather_cache_uapi_${(adcode || city || 'auto').replace(/\s+/g, '')}`;
+            if (!forceRefresh) {
+                const cached = App.Utils.load(cacheKey, null);
+                if (cached && cached.timestamp && (Date.now() - cached.timestamp < 1800000)) {
+                    if (cached.data?.current && cached.data?.daily?.temperature_2m_max) return cached.data;
+                    localStorage.removeItem(cacheKey);
+                }
+            }
+            const params = new URLSearchParams({ extended: 'true', forecast: 'true', hourly: 'true', indices: 'true', lang: 'zh' });
+            // adcode 优先级高于 city；两者都不传时由接口按客户端 IP 自动定位
+            if (adcode) params.set('adcode', adcode);
+            else if (city) params.set('city', city);
+            try {
+                const resp = await fetch(`https://uapis.cn/api/v1/misc/weather?${params}`);
+                if (!resp.ok) throw this._uapiError(resp);
+                const data = this._normalizeUapi(await resp.json());
+                if (!data) throw this._uapiError(null, '天气数据格式异常');
+                App.Utils.save(cacheKey, { data, timestamp: Date.now() });
+                return data;
+            } catch (e) {
+                console.error(e);
+                App.Utils.showToast(e?.friendly ? e.message : '天气数据获取失败');
+                return null;
+            }
+        },
+
+        /** 把 uapis.cn 的错误状态码转成可直接展示给用户的中文错误 */
+        _uapiError(resp, fallback = '') {
+            const e = new Error(fallback || '天气获取失败');
+            e.friendly = true;
+            if (resp) {
+                const map = {
+                    400: '天气接口参数无效',
+                    404: '未找到该城市的天气数据',
+                    429: '天气接口请求过于频繁，请稍后再试',
+                    500: '天气服务内部错误',
+                    503: '天气服务暂时不可用'
+                };
+                e.message = map[resp.status] || `天气获取失败 (${resp.status})`;
+            }
+            return e;
+        },
+
+        /**
+         * 将 uapis.cn 返回结构归一化为 Open-Meteo 风格数据。
+         * @param {object} raw uapis.cn 原始响应
+         * @returns {object|null}
+         */
+        _normalizeUapi(raw) {
+            if (!raw || typeof raw !== 'object') return null;
+            const h = Array.isArray(raw.hourly_forecast) ? raw.hourly_forecast : [];
+            const fc = Array.isArray(raw.forecast) ? raw.forecast : [];
+
+            // UAPI 的 hourly_forecast[].time 是「城市当地墙钟时间」（不带时区偏移），
+            // 与 Open-Meteo timezone=auto 的语义一致：此处只把空格换成 T 得到可解析的
+            // 本地时间串（不补任何偏移），保证图表按当地墙钟显示、与 Open-Meteo 行为一致。
+            // 「今天」直接取 h[0].time 的日期；report_time 是相对描述（如“10 分钟前发布”），不可用。
+            const todayDate = (h[0] && h[0].time ? String(h[0].time).slice(0, 10) : null)
+                || (fc[0] ? fc[0].date : null);
+
+            return {
+                source: 'uapi',
+                todayDate,
+                current: {
+                    temperature_2m: raw.temperature ?? null,
+                    weather_code: this._wmoFromText(raw.weather),
+                    weather_text: raw.weather || '',
+                    apparent_temperature: raw.feels_like ?? null,
+                    relative_humidity_2m: raw.humidity ?? null,
+                    wind_speed_10m: h[0] && h[0].wind_speed != null ? h[0].wind_speed : null,
+                    wind_gusts_10m: null,
+                    wind_direction_10m: raw.wind_direction || '',
+                    rain: raw.precipitation ?? null,
+                    snowfall: null,
+                    uapiWindPower: raw.wind_power || ''
+                },
+                daily: {
+                    time: fc.map(f => f.date),
+                    temperature_2m_max: fc.map(f => f.temp_max ?? null),
+                    temperature_2m_min: fc.map(f => f.temp_min ?? null),
+                    uv_index_max: fc.map(f => f.uv_index ?? null),
+                    uv_index_clear_sky_max: fc.map(f => f.uv_index ?? null),
+                    sunrise: fc.map(f => (f.date && f.sunrise ? `${f.date}T${f.sunrise}` : null)),
+                    sunset: fc.map(f => (f.date && f.sunset ? `${f.date}T${f.sunset}` : null))
+                },
+                hourly: {
+                    time: h.map(x => (x.time ? String(x.time).replace(' ', 'T') : null)),
+                    temperature_2m: h.map(x => x.temperature ?? null),
+                    precipitation: h.map(x => x.precip ?? null),
+                    weather_code: h.map(x => this._wmoFromText(x.weather)),
+                    weather_text: h.map(x => x.weather || ''),
+                    apparent_temperature: h.map(x => x.feels_like ?? null),
+                    snowfall: h.map(() => null)
+                },
+                uapi: {
+                    province: raw.province || '',
+                    city: raw.city || '',
+                    district: raw.district || '',
+                    weather: raw.weather || '',
+                    windPower: raw.wind_power || '',
+                    uv: raw.uv ?? null,
+                    aqi: raw.aqi ?? null,
+                    aqiLevel: raw.aqi_level ?? null,
+                    aqiCategory: raw.aqi_category || '',
+                    aqiPrimary: raw.aqi_primary || '',
+                    visibility: raw.visibility ?? null,
+                    pressure: raw.pressure ?? null,
+                    cloud: raw.cloud ?? null,
+                    reportTime: raw.report_time || '',
+                    alerts: Array.isArray(raw.alerts) ? raw.alerts : [],
+                    lifeIndices: this._normalizeLifeIndices(raw.life_indices)
+                }
+            };
+        },
+
+        /** UAPI life_indices → 有序数组 [{name, level, brief, advice}]（缺失项跳过） */
+        _normalizeLifeIndices(raw) {
+            if (!raw || typeof raw !== 'object') return [];
+            return this.LIFE_INDICES
+                .map(([key, name]) => {
+                    const it = raw[key];
+                    if (!it || typeof it !== 'object') return null;
+                    const level = it.level || it.brief || '';
+                    if (!level) return null;
+                    return { key, name, level, brief: it.brief || '', advice: it.advice || '' };
+                })
+                .filter(Boolean);
+        },
+
+        /** UAPI 的天气文本 → WMO 代码（驱动图标选择与雨/雪效强度） */
+        _wmoFromText(text) {
+            const t = String(text || '');
+            if (!t) return 3;
+            if (t.includes('雷')) return 95;
+            if (t.includes('雹')) return 96;
+            if (t.includes('雪')) return t.includes('大') ? 75 : (t.includes('中') ? 73 : 71);
+            if (t.includes('雨')) return t.includes('阵') ? 80 : (t.includes('大') ? 65 : (t.includes('中') ? 63 : 61));
+            if (t.includes('雾') || t.includes('霾') || t.includes('沙') || t.includes('尘')) return 45;
+            if (t.includes('阴')) return 3;
+            if (t.includes('多云') || t.includes('少云')) return 2;
+            if (t.includes('晴')) return 0;
+            return 3;
+        },
+
+        // ==================== 更新左下角按钮 ====================
+        /** @param {object|null} weatherData 已取到的数据（避免重复请求），缺省时自行拉取 */
+        async updateWeatherFab(weatherData = null) {
+            const data = weatherData || await this.fetchWeather();
+            if (!data || !data.current) return null;
+            this.currentWeatherData = data;
+
+            const current = data.current;
             const code = current.weather_code;
-            const temp = Math.round(current.temperature_2m);
+            const temp = Math.round(Number(current.temperature_2m));
             const info = this.getWeatherInfo(code);
+            // UAPI 的天气文本（如“霾”）比 WMO 映射出的描述更准确，优先展示
+            const desc = current.weather_text || info.desc;
 
             if (this.fabIcon) this.fabIcon.innerHTML = App.Utils.svg(info.icon);
-            if (this.fabText) this.fabText.textContent = `${info.desc} ${temp}°`;
+            if (this.fabText) this.fabText.textContent = `${desc} ${temp}°`;
 
             // 雨/雪效
             this._applyEffectByCode(code);
+            return data;
+        },
+
+        /** 数据源 / 定位参数变化后重新拉取（缓存键随参数变化，通常会真正发一次请求） */
+        async handleSourceChange() {
+            const data = await this.updateWeatherFab();
+            if (data && this.overlay?.classList.contains('open')) {
+                await this.renderWeatherDetail(data);
+            }
         },
 
         async forceRefreshWeather() {
@@ -229,16 +423,14 @@
                 this.refreshBtn.style.pointerEvents = 'none';
             }
             try {
-                const location = await this.getLocation(true);
-                const weatherData = await this.getWeather(location.lat, location.lon, true);
+                const weatherData = await this.fetchWeather(true);
                 if (!weatherData || !weatherData.current) {
                     App.Utils.showToast('刷新失败，请稍后重试');
                     return;
                 }
-                this.currentWeatherData = weatherData;
-                await this.updateWeatherFab();
+                await this.updateWeatherFab(weatherData);
                 if (this.overlay?.classList.contains('open')) {
-                    await this.renderWeatherDetail(weatherData, location);
+                    await this.renderWeatherDetail(weatherData);
                 }
                 App.Utils.showToast('天气已更新');
             } catch (err) {
@@ -275,22 +467,39 @@
         async renderWeatherDetail(weatherData, location) {
             const data = weatherData || this.currentWeatherData;
             if (!data || !data.current) return;
-            const loc = location || await this.getLocation();
+            const isUapi = data.source === 'uapi';
+
+            // 位置展示：UAPI 自带回传的城市/区县（其定位由接口按 IP 或 city/adcode 决定），
+            // 此时无需再调用 IP 定位接口
+            let cityLabel;
+            if (isUapi && data.uapi) {
+                const { city, district } = data.uapi;
+                cityLabel = [city, district && district !== city ? district : ''].filter(Boolean).join(' ')
+                    || city || '未知位置';
+            } else {
+                const loc = location || await this.getLocation();
+                cityLabel = `${loc.city} ${loc.country}`.trim();
+            }
 
             const current = data.current;
             const daily = data.daily;
-            // API 的 daily.time 使用「请求坐标所在时区」的当地日期，需按同一时区取“今天”。
-            // 若直接用 UTC 日期（toISOString），当本地时区快于 UTC（如北京 UTC+8 的凌晨）
-            // 会匹配不到当天，导致最高/最低/紫外线/日出日落全部显示为 --。
-            const todayStr = new Date(Date.now() + (data.utc_offset_seconds || 0) * 1000).toISOString().slice(0, 10);
+            // 「今天」：UAPI 归一化时已按其当地时刻给出 todayDate；Open-Meteo 的 daily.time
+            // 是「请求坐标所在时区」的当地日期，需用返回的 utc_offset_seconds 推算，
+            // 否则当本地时区快于 UTC（如北京 UTC+8 的凌晨）会匹配不到当天，
+            // 导致最高/最低/紫外线/日出日落全部显示为 --。
+            const todayStr = data.todayDate
+                || new Date(Date.now() + (data.utc_offset_seconds || 0) * 1000).toISOString().slice(0, 10);
             const todayIndex = daily.time.indexOf(todayStr);
 
             // 实时数据
-            const temp = Math.round(current.temperature_2m);
-            const feel = Math.round(current.apparent_temperature);
-            const humidity = current.relative_humidity_2m + '%';
+            const has = v => v !== null && v !== undefined && v !== '';
+            const temp = has(current.temperature_2m) ? Math.round(current.temperature_2m) : '--';
+            const feel = has(current.apparent_temperature) ? Math.round(current.apparent_temperature) : '--';
+            const humidity = has(current.relative_humidity_2m) ? current.relative_humidity_2m + '%' : '--';
             const code = current.weather_code;
             const info = this.getWeatherInfo(code);
+            // UAPI 的天气文本（如“霾”）比 WMO 映射出的描述更准确，优先展示
+            const desc = current.weather_text || info.desc;
 
             // 今日最高/最低温度
             const maxTemp = todayIndex >= 0 && daily.temperature_2m_max[todayIndex] !== null
@@ -310,6 +519,29 @@
             const sunset = todayIndex >= 0 && daily.sunset[todayIndex]
                 ? daily.sunset[todayIndex].slice(11, 16) : '--';
 
+            // 明细卡片按数据源区分：UAPI 不提供阵风 / 降雪 / 晴空紫外线，
+            // 但额外给出风力等级与空气质量
+            const cards = [
+                this._infoCard('droplet', '湿度', humidity),
+                this._infoCard('wind', '风速', current.wind_speed_10m, 'km/h'),
+                isUapi
+                    ? this._infoCard('wind', '风力', current.uapiWindPower)
+                    : this._infoCard('wind', '阵风', current.wind_gusts_10m, 'km/h'),
+                this._infoCard('location', '风向', this._windDirText(current.wind_direction_10m)),
+                this._infoCard('rain', '降雨', current.rain, 'mm')
+            ];
+            if (isUapi) {
+                if (data.uapi && data.uapi.aqi != null) {
+                    cards.push(this._infoCard('cloud', '空气质量', data.uapi.aqi, data.uapi.aqiCategory));
+                }
+                cards.push(this._infoCard('sun', '紫外线', uvMax));
+            } else {
+                cards.push(this._infoCard('snowflake', '降雪', current.snowfall, 'cm'));
+                cards.push(this._infoCard('sun', '紫外线', uvMax, `晴空 ${uvClear}`));
+            }
+            cards.push(this._infoCard('sunrise', '日出', sunrise));
+            cards.push(this._infoCard('sunset', '日落', sunset));
+
             const mainInfo = document.getElementById('weatherMainInfo');
             if (mainInfo) {
                 mainInfo.innerHTML = `
@@ -318,11 +550,11 @@
                             <div class="weather-hero-icon">${App.Utils.svg(info.icon)}</div>
                             <div class="weather-hero-tempwrap">
                                 <div class="weather-hero-temp">${temp}<span class="unit">°</span></div>
-                                <div class="weather-hero-desc">${info.desc}</div>
+                                <div class="weather-hero-desc">${desc}</div>
                             </div>
                         </div>
                         <div class="weather-hero-meta">
-                            <div class="weather-hero-city">${App.Utils.svg('location')}<span>${loc.city} ${loc.country}</span></div>
+                            <div class="weather-hero-city">${App.Utils.svg('location')}<span>${cityLabel}</span></div>
                             <div class="weather-hero-stats">
                                 <div class="hero-stat"><span class="hero-stat-label">最高</span><span class="hero-stat-value">${maxTemp}°</span></div>
                                 <div class="hero-stat"><span class="hero-stat-label">最低</span><span class="hero-stat-value">${minTemp}°</span></div>
@@ -331,32 +563,52 @@
                         </div>
                     </div>
                     <div class="weather-details">
-                        ${this._infoCard('droplet', '湿度', humidity)}
-                        ${this._infoCard('wind', '风速', current.wind_speed_10m, 'km/h')}
-                        ${this._infoCard('wind', '阵风', current.wind_gusts_10m, 'km/h')}
-                        ${this._infoCard('location', '风向', this._windDirText(current.wind_direction_10m))}
-                        ${this._infoCard('rain', '降雨', current.rain, 'mm')}
-                        ${this._infoCard('snowflake', '降雪', current.snowfall, 'cm')}
-                        ${this._infoCard('sun', '紫外线', uvMax, `晴空 ${uvClear}`)}
-                        ${this._infoCard('sunrise', '日出', sunrise)}
-                        ${this._infoCard('sunset', '日落', sunset)}
+                        ${cards.join('')}
                     </div>
                 `;
             }
 
+            // 生活指数（仅 UAPI 提供，共 18 项）
+            this._renderLifeIndices(isUapi && data.uapi ? data.uapi.lifeIndices : null);
+
             this.drawWeatherChart(data);
         },
 
-        /** 生成一张天气详情卡片 */
+        /** 渲染生活指数网格（仅 UAPI 有；无数据时隐藏整块） */
+        _renderLifeIndices(list) {
+            const box = document.getElementById('weatherLifeIndices');
+            if (!box) return;
+            if (!Array.isArray(list) || list.length === 0) {
+                box.innerHTML = '';
+                box.hidden = true;
+                return;
+            }
+            box.hidden = false;
+            const items = list.map(it => {
+                const title = [it.brief, it.advice].filter(Boolean).join(' · ');
+                return `<div class="weather-life-item"${title ? ` title="${App.Utils.escapeHtml(title)}"` : ''}>
+                    <span class="weather-life-name">${App.Utils.escapeHtml(it.name)}</span>
+                    <span class="weather-life-level">${App.Utils.escapeHtml(it.level)}</span>
+                </div>`;
+            }).join('');
+            box.innerHTML = `
+                <div class="weather-section-title">${App.Utils.svg('sun')}生活指数</div>
+                <div class="weather-life-grid">${items}</div>
+            `;
+        },
+
+        /** 生成一张天气详情卡片（空值统一显示为 --） */
         _infoCard(icon, label, value, sub = '') {
+            const safe = (value === null || value === undefined || value === '') ? '--' : value;
             return `<div class="weather-detail-card">
                 <div class="weather-detail-head">${App.Utils.svg(icon)}<span>${label}</span></div>
-                <div class="weather-detail-value">${value}${sub ? `<span class="weather-detail-unit">${sub}</span>` : ''}</div>
+                <div class="weather-detail-value">${safe}${sub ? `<span class="weather-detail-unit">${sub}</span>` : ''}</div>
             </div>`;
         },
 
-        /** 风向角度转中文方位 */
+        /** 风向：角度（Open-Meteo）转中文方位；UAPI 直接给文本风向则原样返回 */
         _windDirText(deg) {
+            if (typeof deg === 'string') return deg.trim() || '--';
             if (deg === null || deg === undefined || isNaN(deg)) return '--';
             const dirs = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
             const idx = Math.round((((deg % 360) + 360) % 360) / 45) % 8;

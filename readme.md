@@ -77,9 +77,12 @@
 
 ### 天气
 
-- **天气模块**：左下角悬浮天气按钮，显示当前天气；点击展开详情面板（数据来自 Open-Meteo 的 **CMA 中国气象局 GFS GRAPES 全球模型**）——
+- **天气模块**：左下角悬浮天气按钮，显示当前天气；点击展开详情面板。数据源支持两种，可在「设置 → 位置与天气」切换——
+  - **UAPI**（`uapis.cn`，默认）：按城市名 / Adcode 或 IP 自动定位；
+  - **Open-Meteo**（CMA 中国气象局 GFS GRAPES 全球模型）：按经纬度定位。
   - 顶部大卡片：当前温度、天气状况、城市、最高 / 最低 / 体感温度；
-  - 下方信息网格：湿度、风速、阵风、风向、降雨、降雪、紫外线、日出、日落；
+  - 下方信息网格：湿度、风速、风向、降雨、紫外线、日出、日落（Open-Meteo 额外含阵风 / 降雪 / 晴空紫外线，UAPI 额外含风力等级 / 空气质量）；
+  - 生活指数（仅 UAPI）：18 项生活指数网格（穿衣 / 紫外线 / 洗车 / 运动 / 旅游……），鼠标悬停查看详细建议；
   - 未来 48 小时温度趋势折线图。
 
 ### 设置
@@ -90,7 +93,7 @@
 ## 常见说明
 
 - 壁纸通过浏览器 `localStorage` 保存，因此体积有限制（本地图片建议 2MB 以内）。
-- 天气数据来自公开接口（Open-Meteo / `cma_grapes_global` CMA 中国气象局模型），**天气预报仅供娱乐，气温相对准确**；CMA 模型不提供紫外线(UV)数据，该项改由 Open-Meteo 默认模型单独获取并合并（获取失败时回退为 `--`）。
+- 天气数据来自公开接口，默认使用 **UAPI（`uapis.cn`）**，也可切换为 **Open-Meteo 的 `cma_grapes_global`（CMA 中国气象局模型）**；**天气预报仅供娱乐，气温相对准确**。CMA 模型不提供紫外线(UV)数据，该项改由 Open-Meteo 默认模型单独获取并合并（获取失败时回退为 `--`）。UAPI 依赖 CORS，需通过 http(s) 访问页面（本地用 `file://` 打开时 UAPI 不可用，Open-Meteo 不受影响）。
 - “仓库随机壁纸 / 固定壁纸”只在静态托管环境下生效；本地 `file://` 打开时因浏览器安全策略不会加载。
 
 ---
@@ -124,9 +127,10 @@ js/
 
 ### 常用 API
 
-- 天气：`https://api.open-meteo.com/v1/cma`（Open-Meteo，CMA 中国气象局 GFS GRAPES 全球模型，缓存 30 分钟）
+- 天气（默认）：`https://uapis.cn/api/v1/misc/weather`（UAPI，国内数据，按 `city` / `adcode` 或 IP 定位，缓存 30 分钟；限流 4 QPS / ≤40 次/分）
+- 天气（备选）：`https://api.open-meteo.com/v1/cma`（Open-Meteo，CMA 中国气象局 GFS GRAPES 全球模型，缓存 30 分钟）
 - 紫外线：`https://api.open-meteo.com/v1/forecast`（Open-Meteo 默认模型，补齐 CMA 所缺的 UV 数据）
-- 位置：`https://api.ip.sb/geoip`（IP 定位，缓存 24 小时）
+- 位置：`https://api.ip.sb/geoip`（IP 定位，仅 Open-Meteo 数据源使用，缓存 24 小时）
 
 > 完整的接口参数、返回字段、缓存策略与注意事项见 [API.md](./API.md)。
 

@@ -8,9 +8,10 @@
 
 | 用途 | 接口 / 地址 | 方式 | 缓存 | 代码位置 |
 | --- | --- | --- | --- | --- |
-| 天气 | `https://api.open-meteo.com/v1/cma` | `fetch` GET | 30 分钟 | `js/weather.js` |
-| 紫外线（补齐） | `https://api.open-meteo.com/v1/forecast` | `fetch` GET | 随天气缓存 | `js/weather.js` |
-| 定位 | `https://api.ip.sb/geoip` | `fetch` GET | 24 小时 | `js/weather.js` |
+| 天气 · UAPI（默认） | `https://uapis.cn/api/v1/misc/weather` | `fetch` GET | 30 分钟 | `js/weather.js` |
+| 天气 · Open-Meteo（备选） | `https://api.open-meteo.com/v1/cma` | `fetch` GET | 30 分钟 | `js/weather.js` |
+| 紫外线（Open-Meteo 补齐） | `https://api.open-meteo.com/v1/forecast` | `fetch` GET | 随天气缓存 | `js/weather.js` |
+| 定位（Open-Meteo 用） | `https://api.ip.sb/geoip` | `fetch` GET | 24 小时 | `js/weather.js` |
 | 搜索联想 · 百度 | `https://suggestion.baidu.com/su` | JSONP | 无 | `js/search.js` |
 | 搜索联想 · Bing | `https://api.bing.com/qsonhs.aspx` | JSONP | 无 | `js/search.js` |
 | 搜索联想 · Google | `https://suggestqueries.google.com/complete/search` | JSONP | 无 | `js/search.js` |
@@ -18,7 +19,95 @@
 
 ---
 
-## 1. 天气 —— Open-Meteo（CMA 中国气象局模型）
+## 1. 天气（双数据源，可在设置中切换）
+
+天气由两个可切换的数据源提供，默认 **UAPI**，可在「设置 → 位置与天气 → 天气数据源」切换为 **Open-Meteo**：
+
+| 数据源 | 定位方式 | 说明 |
+| --- | --- | --- |
+| **UAPI**（默认） | `city` / `adcode` 参数，留空则按客户端 IP 自动定位 | 国内数据，字段更全（空气质量、风力等级等），但有调用频率限制 |
+| Open-Meteo（CMA） | 经纬度（自定义或 IP 定位） | 使用 CMA 中国气象局模型 |
+
+> ⚠️ UAPI 依赖 CORS：服务端仅在请求携带合法 `Origin` 时返回 `Access-Control-Allow-Origin`（`Origin: null` 不返回）。因此**必须通过 http(s) 访问页面**（如 GitHub Pages），本地用 `file://` 直接打开时 UAPI 请求会被浏览器拦截；Open-Meteo 不受影响（其响应含 `Access-Control-Allow-Origin: *`）。
+
+---
+
+### 1.1 UAPI（uapis.cn）· 默认数据源
+
+- **端点**：`https://uapis.cn/api/v1/misc/weather`
+- **官方文档**：<https://uapis.cn/docs/api-reference/get-misc-weather>
+- **请求方式**：`fetch` GET
+- **鉴权**：免费、无需 API Key（按 IP 计「积分」，约 2 积分/次）
+- **限流**：**4 QPS**，建议 ≤ **40 次/分钟**
+- **缓存**：30 分钟，键名 `sp_weather_cache_uapi_{adcode||city||auto}`
+
+#### 请求参数
+
+| 参数 | 说明 |
+| --- | --- |
+| `city` | 城市名（如 `北京`），与 `adcode` 二选一 |
+| `adcode` | 行政区划代码（如 `110000`），**优先于** `city` |
+| `lang` | 语言，固定 `zh` |
+| `extended` | `true`，返回空气质量等扩展字段 |
+| `forecast` | `true`，返回 7 天预报 |
+| `hourly` | `true`，返回逐时预报 |
+| `indices` | `true`，返回 18 项生活指数（`life_indices`） |
+
+> **不支持经纬度**；`city` 与 `adcode` 均留空时按客户端 IP 自动定位。
+
+#### 返回与展示映射
+
+| 字段 | 单位 | 展示位置 |
+| --- | --- | --- |
+| `temperature` | °C | 当前温度 |
+| `weather` | 文本 | 天气描述（优于 WMO 映射结果，直接展示） |
+| `weather_icon` | 和风编码 | 天气图标 |
+| `feels_like` | °C | 体感 |
+| `humidity` | % | 湿度 |
+| `wind_direction` / `wind_power` | 文本 / 等级 | 风向（文本） / 风力 |
+| `hourly_forecast[0].wind_speed` | km/h | 风速 |
+| `precipitation` | mm | 降雨 |
+| `uv` | — | 紫外线（当日） |
+| `aqi` / `aqi_category` | — | 空气质量 |
+| `forecast[].temp_max` / `temp_min` | °C | 当日最高 / 最低 |
+| `forecast[].sunrise` / `sunset` | `HH:MM` | 日出 / 日落 |
+| `hourly_forecast[]` | — | 未来逐时趋势折线图 |
+| `life_indices` | — | 生活指数网格（18 项，见下） |
+
+#### 生活指数（`life_indices`）
+
+`indices=true` 时返回 `life_indices` 对象，共 **18 项**，每项含 `level`（等级名）、`brief`（简述）、`advice`（详细建议）。程序按固定顺序归一化为数组（键 → 中文名），渲染为「生活指数」网格；鼠标悬停显示 `brief · advice`。
+
+| 键 | 名称 | 键 | 名称 |
+| --- | --- | --- | --- |
+| `clothing` | 穿衣 | `cold_risk` | 感冒 |
+| `uv` | 紫外线 | `exercise` | 运动 |
+| `car_wash` | 洗车 | `comfort` | 舒适度 |
+| `drying` | 晾晒 | `travel` | 旅游 |
+| `air_conditioner` | 空调 | `fishing` | 钓鱼 |
+| `allergy` | 过敏 | `sunscreen` | 防晒 |
+| `mood` | 心情 | `beer` | 啤酒 |
+| `umbrella` | 雨伞 | `traffic` | 交通 |
+| `air_purifier` | 空气净化 | `pollen` | 花粉 |
+
+> 生活指数目前仅支持中文（`lang` 对其无效）；缺失项会被跳过，整块无数据时自动隐藏。
+
+#### 注意事项
+
+- **时间字段**：`report_time` 是**相对描述**（如 `"10 分钟前发布"`），**不可**用于取日期；「今天」改用 `hourly_forecast[0].time` 的日期。
+- **逐时时间**：`hourly_forecast[].time` 是「城市当地墙钟时间」（格式 `YYYY-MM-DD HH:MM:SS`，无时区偏移）。程序仅把空格换成 `T` 得到本地时间串（**不补偏移**），与 Open-Meteo `timezone=auto` 的语义保持一致。
+- **缺失字段**：UAPI **不提供**阵风、降雪、晴空紫外线；对应卡片会隐藏或显示 `--`（界面卡片集按数据源切换）。
+- **错误码**：`400 INVALID_PARAMETER`、`404 NOT_FOUND`、`500`、`503 SERVICE_UNAVAILABLE`（502 已移除）。
+
+#### 测试
+
+```
+https://uapis.cn/api/v1/misc/weather?extended=true&forecast=true&hourly=true&lang=zh
+```
+
+---
+
+### 1.2 Open-Meteo —— CMA 中国气象局模型（备选数据源）
 
 - **端点**：`https://api.open-meteo.com/v1/cma`
 - **模型**：CMA 中国气象局 **GFS GRAPES 全球模型**（内部标识 `cma_grapes_global`）
@@ -81,7 +170,9 @@ https://api.open-meteo.com/v1/cma?latitude=39.9042&longitude=116.4074&daily=sunr
 
 ---
 
-## 2. 定位 —— IP 地理定位
+## 2. 定位 —— IP 地理定位（仅 Open-Meteo 使用）
+
+> UAPI 数据源依据 `city` / `adcode` 或客户端 IP 自行定位，不使用此接口。
 
 - **端点**：`https://api.ip.sb/geoip`
 - **请求方式**：`fetch` GET
@@ -139,6 +230,9 @@ https://api.open-meteo.com/v1/cma?latitude=39.9042&longitude=116.4074&daily=sunr
 
 | localStorage 键 | 含义 | 有效期 |
 | --- | --- | --- |
-| `sp_weather_cache_{lat}_{lon}` | 天气数据缓存 | 30 分钟 |
-| `sp_location_cache` | IP 定位结果缓存 | 24 小时 |
-| `sp_custom_lat` / `sp_custom_lon` | 自定义经纬度（优先于 IP 定位） | 持久 |
+| `sp_weather_cache_{lat}_{lon}` | 天气缓存（Open-Meteo 数据源） | 30 分钟 |
+| `sp_weather_cache_uapi_{adcode\|city\|auto}` | 天气缓存（UAPI 数据源） | 30 分钟 |
+| `sp_weather_source` | 天气数据源（`uapi` \| `open-meteo`，默认 `uapi`） | 持久 |
+| `sp_weather_city` / `sp_weather_adcode` | UAPI 定位参数（留空按 IP 自动定位） | 持久 |
+| `sp_location_cache` | IP 定位结果缓存（Open-Meteo 数据源） | 24 小时 |
+| `sp_custom_lat` / `sp_custom_lon` | 自定义经纬度（Open-Meteo，优先于 IP 定位） | 持久 |

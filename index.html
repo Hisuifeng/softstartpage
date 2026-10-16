@@ -130,6 +130,7 @@
                         </div>
                     </div>
                 </div>
+                <div class="weather-life-indices" id="weatherLifeIndices" hidden></div>
             </div>
         </div>
     </div>
@@ -316,16 +317,37 @@
                     <section class="settings-group" id="secLocation">
                         <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
                                 data-svg="location"></span>位置与天气</div>
-                        <div class="settings-row" style="flex-direction:column; align-items:flex-start;">
-                            <div style="display:flex; gap:8px; width:100%; align-items:center;">
+                        <div class="settings-row">
+                            <span class="settings-row-label">天气数据源</span>
+                            <select class="settings-select" id="selectWeatherSource">
+                                <option value="uapi">UAPI（uapis.cn）</option>
+                                <option value="open-meteo">Open-Meteo（CMA）</option>
+                            </select>
+                        </div>
+                        <!-- UAPI 定位：仅选中 UAPI 时显示 -->
+                        <div class="settings-subgroup" id="uapiLocationFields">
+                            <div class="settings-row">
+                                <span class="settings-row-label">城市名称</span>
+                                <input type="text" class="settings-input" id="weatherCityInput"
+                                    placeholder="如 北京 / Tokyo">
+                            </div>
+                            <div class="settings-row">
+                                <span class="settings-row-label">城市 Adcode</span>
+                                <input type="text" class="settings-input" id="weatherAdcodeInput"
+                                    placeholder="如 110000（优先于城市名）">
+                            </div>
+                            <span class="settings-hint">城市名 / Adcode 留空时按 IP 自动定位</span>
+                        </div>
+                        <!-- Open-Meteo 坐标：仅选中 Open-Meteo 时显示 -->
+                        <div class="settings-subgroup" id="openMeteoLocationFields">
+                            <div class="settings-row">
                                 <input type="number" class="settings-input" id="customLatInput"
                                     placeholder="纬度 (如 39.9)" step="any" style="flex:1;">
                                 <input type="number" class="settings-input" id="customLonInput"
                                     placeholder="经度 (如 116.4)" step="any" style="flex:1;">
                                 <button class="btn primary" id="applyCustomCoords">应用</button>
                             </div>
-                            <span
-                                style="font-size:0.75rem; color:var(--text-tertiary); margin-top:4px;">留空则自动使用IP定位</span>
+                            <span class="settings-hint">经纬度留空时按 IP 自动定位</span>
                         </div>
                     </section>
 
