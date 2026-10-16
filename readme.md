@@ -25,6 +25,7 @@
 - [常见说明](#常见说明)
 - [面向开发者](#面向开发者)
   - [项目结构](#项目结构)
+  - [构建与部署](#构建与部署)
   - [常用 API](#常用-api)
   - [存储](#存储)
   - [自定义仓库壁纸](#自定义仓库壁纸)
@@ -124,7 +125,34 @@ js/
   worldclock.js     世界时钟
   weather.js        天气与雨雪特效
   main.js           状态与应用初始化
+build.js            零依赖构建脚本（产出 dist/）
+package.json        仅含 npm scripts，无第三方依赖
+_headers            Cloudflare Pages 缓存策略（发布根目录也需要）
+.github/workflows/  GitHub Actions 构建与部署
+dist/               构建产物（已 gitignore）
 ```
+
+### 构建与部署
+
+源码保持零构建即可直接双击运行；线上站点走一次构建，用来**合并请求**与**压缩壁纸**：
+
+```bash
+node build.js        # 或 npm run build
+```
+
+产物在 `dist/`，与源码相比有三处优化：
+
+- **JS 合并**：13 个 `defer` 分片按顺序拼成 `assets/bundle.<hash>.js`（13 次请求 → 1 次）。
+- **壁纸转 WebP**：`img/wallpaper/**` 由 JPG 压为 WebP（最长边 1920、q80，实测 52 MB → 约 1.7 MB，单张 ≤ 320 KB），并让代码引用 `.webp`。若本机装了 `sharp` / ImageMagick / `webp` 则启用，否则回退拷贝原图（功能不受影响）。
+- **内容 hash + 长缓存**：`index.html` 引用改为 `assets/` 下带 hash 的文件名，并写入 `dist/_headers`（`/assets/*` 一年 immutable、`/img/*` 7 天）。
+
+线上由 `.github/workflows/build.yml` 在推送 `main` 时自动构建：
+
+- **GitHub Pages**：仓库 Settings → Pages → Source 选 **GitHub Actions** 即可由工作流直接发布 `dist/`。
+- **Cloudflare Pages**：推荐同样走工作流，配置 `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` 两个仓库 Secrets 后会自动 `pages deploy dist --project-name=softstartpage`。若沿用 Dashboard 的 Git 集成，请把 Build command 设为 `node build.js`、Output directory 设为 `dist`（构建镜像若无 WebP 工具会自动回退原图）。
+- 若继续让两边直接发布仓库根目录，`_headers` 仍会修正缓存，但不会享受 JS 合并与壁纸压缩的收益。
+
+> 本地只做开发预览时无需构建：`index.html` 直接引用 13 个源码分片与 `style.css`。
 
 ### 常用 API
 

@@ -7,6 +7,8 @@
     // 确保全局 App 命名空间存在
     window.App = window.App || {};
 
+    const REPO_WP_EXT = 'jpg';
+
     const Wallpaper = {
         // DOM 元素
         layer: null,
@@ -102,7 +104,7 @@
             const count = this._themeCount(dir);
             if (count > 0) {
                 const i = Math.floor(Math.random() * count);
-                return `img/wallpaper/${dir}/wallpaper${i}.jpg`;
+                return `img/wallpaper/${dir}/wallpaper${i}.${REPO_WP_EXT}`;
             }
             return this._probeRandomWallpaper(dir);
         },
@@ -120,7 +122,7 @@
             const maxAttempts = 6;
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
                 const i = Math.floor(Math.random() * count);
-                const url = `img/wallpaper/${dir}/wallpaper${i}.jpg`;
+                const url = `img/wallpaper/${dir}/wallpaper${i}.${REPO_WP_EXT}`;
                 let isImage = false;
                 try {
                     const res = await fetch(url, { method: 'HEAD' });
@@ -295,7 +297,9 @@
          */
         _safeRepoUrl(value) {
             const s = String(value || '').trim();
-            return /^img\/wallpaper\/(black|light)\/wallpaper\d+\.(jpg|jpeg|png|webp)$/i.test(s) ? s : '';
+            if (!/^img\/wallpaper\/(black|light)\/wallpaper\d+\.(jpg|jpeg|png|webp)$/i.test(s)) return '';
+            if (REPO_WP_EXT === 'webp') return s.replace(/\.jpe?g$/i, '.webp');
+            return s;
         },
 
         /** 当前是否为固定的仓库壁纸 */

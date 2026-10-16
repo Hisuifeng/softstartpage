@@ -1,0 +1,84 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install WebP tools
+        run: sudo apt-get update && sudo apt-get install -y webp imagemagick
+
+      - name: Build
+        run: node build.js
+
+      - name: Verify build output
+        run: |
+          du -sh dist && du -sh dist/img/wallpaper
+          if ! ls dist/img/wallpaper/black/*.webp > /dev/null 2>&1; then
+            echo "::error::未生成 WebP 壁纸，构建回退到了未压缩原图"
+            exit 1
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  deploy-cloudflare:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - id: check
+        run: echo "enabled=${{ secrets.CLOUDFLARE_API_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+      - if: steps.check.outputs.enabled != 'true'
+        run: echo "未配置 CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID，跳过 Cloudflare 部署"
+
+      - uses: actions/download-artifact@v4
+        if: steps.check.outputs.enabled == 'true'
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to Cloudflare Pages
+        if: steps.check.outputs.enabled == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=softstartpage

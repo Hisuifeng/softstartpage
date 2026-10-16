@@ -1,2 +1,5 @@
 .gitignire
 \old
+\demo
+/node_modules
+/dist
