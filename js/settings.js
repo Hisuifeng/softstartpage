@@ -23,6 +23,7 @@
         toggleParticles: null,
         toggleParallax: null,
         toggleDefaultWallpaper: null,
+        toggleHdWallpaper: null,
         wallpaperPinStatus: null,
         toggleBookmarkInPage: null,
         selectThemeMode: null,
@@ -72,6 +73,7 @@
             this.toggleParticles = document.getElementById('toggleParticles');
             this.toggleParallax = document.getElementById('toggleParallax');
             this.toggleDefaultWallpaper = document.getElementById('toggleDefaultWallpaper');
+            this.toggleHdWallpaper = document.getElementById('toggleHdWallpaper');
             this.wallpaperPinStatus = document.getElementById('wallpaperPinStatus');
             this.toggleBookmarkInPage = document.getElementById('toggleBookmarkInPage');
             this.selectThemeMode = document.getElementById('selectThemeMode');
@@ -181,6 +183,11 @@
             const defaultWallpaper = this.toggleDefaultWallpaper?.checked ?? true;
             state.defaultWallpaperEnabled = defaultWallpaper;
             App.Utils.save('sp_default_wallpaper', defaultWallpaper);
+
+            const hdWallpaper = this.toggleHdWallpaper?.checked ?? false;
+            state.hdWallpaperEnabled = hdWallpaper;
+            App.Utils.save('sp_hd_wallpaper', hdWallpaper);
+
             if (window.App.Wallpaper) App.Wallpaper.applyToUI();
 
             // 书签
@@ -226,6 +233,7 @@
             state.bookmarkInPage = true;
             state.particlesEnabled = false;
             state.defaultWallpaperEnabled = true;
+            state.hdWallpaperEnabled = false;
             state.parallaxEnabled = true;
             // 主题恢复默认（跟随系统）
             if (window.App.Theme) App.Theme.setMode('auto');
@@ -254,6 +262,7 @@
             App.Utils.save('sp_bookmark_inpage', true);
             App.Utils.save('sp_particles', false);
             App.Utils.save('sp_default_wallpaper', true);
+            App.Utils.save('sp_hd_wallpaper', false);
             App.Utils.save('sp_parallax', true);
             if (window.App.Particles) App.Particles.setEnabled(false);
             if (window.App.Parallax) App.Parallax.setEnabled(true);
@@ -297,6 +306,7 @@
             if (this.toggleParticles) this.toggleParticles.checked = !!state.particlesEnabled;
             if (this.toggleParallax) this.toggleParallax.checked = state.parallaxEnabled !== false;
             if (this.toggleDefaultWallpaper) this.toggleDefaultWallpaper.checked = state.defaultWallpaperEnabled !== false;
+            if (this.toggleHdWallpaper) this.toggleHdWallpaper.checked = state.hdWallpaperEnabled === true;
             if (this.wallpaperPinStatus) {
                 const pinned = window.App.Wallpaper && App.Wallpaper.isPinned && App.Wallpaper.isPinned();
                 this.wallpaperPinStatus.classList.toggle('hidden', !pinned);

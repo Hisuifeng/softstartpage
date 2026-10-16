@@ -28,6 +28,7 @@
         particlesEnabled: App.Utils.load('sp_particles', false),
         parallaxEnabled: App.Utils.load('sp_parallax', true),
         defaultWallpaperEnabled: App.Utils.load('sp_default_wallpaper', true),
+        hdWallpaperEnabled: App.Utils.load('sp_hd_wallpaper', false),
         customEngines: App.Utils.load('sp_custom_engines', []),
         currentEngineKey: App.Utils.load('sp_engine', 'google'),
         themeMode: App.Utils.load('sp_theme', 'auto')

@@ -5,7 +5,8 @@
  * 产物输出到 dist/：
  *   · js 分片按顺序拼接为 assets/bundle.<hash>.js（13 请求 -> 1 请求）
  *   · style.css 重命名为 assets/style.<hash>.css
- *   · 壁纸 JPG 压缩为 WebP（最长边 1920，q80）并让代码引用 .webp
+ *   · 壁纸 JPG 压缩为 WebP（最长边 1920，q80）并让代码引用 .webp；
+ *     原图另存到 img/wallpaper/{dir}/orig/，供设置里的“使用高清原图”开关按需加载
  *   · 写入 dist/_headers 缓存策略 + dist/.nojekyll
  *
  * 若本机 / CI 没有 sharp、ImageMagick 或 cwebp，则自动回退为直接拷贝原图（功能不受影响）。
@@ -102,9 +103,15 @@ async function buildWallpapers() {
         if (ok) {
             for (const w of wallpapers) {
                 copyFile(path.join(tmp, w.dir, `${w.base}.webp`), path.join(DIST, 'img', 'wallpaper', w.dir, `${w.base}.webp`));
+                if (/\.jpe?g$/i.test(w.name)) {
+                    copyFile(w.src, path.join(DIST, 'img', 'wallpaper', w.dir, 'orig', w.name));
+                } else {
+                    log(`跳过高清原图（仅支持 .jpg）：img/wallpaper/${w.dir}/${w.name}`);
+                }
             }
             rimraf(tmp);
             log(`壁纸 -> WebP 完成（转换器：${converter.name}，共 ${wallpapers.length} 张）`);
+            log('高清原图 -> img/wallpaper/{black,light}/orig/（仅在设置里开启“使用高清原图”时才加载）');
             return { ext: 'webp', webp: true };
         }
         rimraf(tmp);

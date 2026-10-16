@@ -75,6 +75,7 @@
   - 未设置壁纸时，可随机使用仓库内置壁纸（分暗色 / 亮色两套）；
   - 看到喜欢的仓库壁纸？点右上角「固定该壁纸」就能把它固定下来，再点「取消固定」即可恢复随机；
   - 右上角提示条会在「喜欢这张壁纸吗？」下方显示该壁纸的推荐者；设置面板「壁纸」区同样会显示当前壁纸的推荐者（固定或随机默认壁纸生效时）；
+  - **高清原图开关**：设置 → 壁纸 →「使用高清原图」。开启后，默认与固定的仓库壁纸改用未压缩原图（构建产物位于 `orig/`，单张最大约 18MB，首次加载较慢）；默认关闭，弱网建议保持关闭。
   - 想把自己收藏的壁纸分享给大家？欢迎[提交 issues](https://github.com/Hisuifeng/softstartpage/issues/1)。
 
 ### 天气
@@ -143,7 +144,7 @@ node build.js        # 或 npm run build
 产物在 `dist/`，与源码相比有三处优化：
 
 - **JS 合并**：13 个 `defer` 分片按顺序拼成 `assets/bundle.<hash>.js`（13 次请求 → 1 次）。
-- **壁纸转 WebP**：`img/wallpaper/**` 由 JPG 压为 WebP（最长边 1920、q80，实测 52 MB → 约 1.7 MB，单张 ≤ 320 KB），并让代码引用 `.webp`。若本机装了 `sharp` / ImageMagick / `webp` 则启用，否则回退拷贝原图（功能不受影响）。
+- **壁纸转 WebP**：`img/wallpaper/**` 由 JPG 压为 WebP（最长边 1920、q80，实测 52 MB → 约 1.7 MB，单张 ≤ 320 KB），并让代码引用 `.webp`；原图另存到 `img/wallpaper/*/orig/`，仅供设置里的「使用高清原图」开关按需加载（不开启不会产生任何请求）。若本机装了 `sharp` / ImageMagick / `webp` 则启用，否则回退拷贝原图（功能不受影响）。
 - **内容 hash + 长缓存**：`index.html` 引用改为 `assets/` 下带 hash 的文件名，并写入 `dist/_headers`（`/assets/*` 一年 immutable、`/img/*` 7 天）。
 
 线上由 `.github/workflows/build.yml` 在推送 `main` 时自动构建：

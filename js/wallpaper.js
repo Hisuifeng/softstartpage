@@ -39,6 +39,25 @@
             return light ? 'light' : 'black';
         },
 
+        /** 是否开启“使用高清原图”（仅影响仓库自带壁纸，网络/本地壁纸不受影响） */
+        _isHdEnabled() {
+            return !!(window.App.state && window.App.state.hdWallpaperEnabled === true);
+        },
+
+        /**
+         * 把仓库壁纸的规范路径解析为实际展示 URL
+         * · 构建产物（REPO_WP_EXT='webp'）且开启高清 → img/wallpaper/{dir}/orig/wallpaper{n}.jpg
+         * · 源码模式（REPO_WP_EXT='jpg'）与未开启高清 → 原样返回
+         * @param {string} url 仓库壁纸规范路径（压缩版）
+         * @returns {string}
+         */
+        _resolveUrl(url) {
+            if (!this._isHdEnabled() || REPO_WP_EXT !== 'webp') return String(url || '');
+            const m = /^img\/wallpaper\/(black|light)\/wallpaper(\d+)\.(?:jpg|jpeg|png|webp)$/i.exec(String(url || ''));
+            if (!m) return String(url || '');
+            return `img/wallpaper/${m[1]}/orig/wallpaper${m[2]}.jpg`;
+        },
+
         /**
          * 读取壁纸元数据 img/wallpaper/wppaper_about.json（只请求一次，结果缓存）。
          * 该文件提供每主题的壁纸张数（black_num / light_num）与推荐者（*_about）。
@@ -148,7 +167,7 @@
             const render = (url) => {
                 if (!url) { hide(); return; }
                 this._currentDefaultUrl = url;
-                this.layer.style.backgroundImage = `url('${url}')`;
+                this.layer.style.backgroundImage = `url('${this._resolveUrl(url)}')`;
                 this.layer.classList.remove('hidden');
                 this._updateHint();
             };
@@ -241,7 +260,7 @@
                     this._currentDefaultUrl = url;
                     // 开关关闭时隐藏壁纸（固定状态仍保留，设置面板仍显示“壁纸已固定”）
                     if (window.App.state.defaultWallpaperEnabled !== false) {
-                        this.layer.style.backgroundImage = `url('${url}')`;
+                        this.layer.style.backgroundImage = `url('${this._resolveUrl(url)}')`;
                         this.layer.classList.remove('hidden');
                         if (this.preview) {
                             this.preview.style.backgroundImage = `url('${url}')`;
@@ -297,6 +316,7 @@
          */
         _safeRepoUrl(value) {
             const s = String(value || '').trim();
+            if (/^img\/wallpaper\/(black|light)\/orig\/wallpaper\d+\.jpe?g$/i.test(s)) return s;
             if (!/^img\/wallpaper\/(black|light)\/wallpaper\d+\.(jpg|jpeg|png|webp)$/i.test(s)) return '';
             if (REPO_WP_EXT === 'webp') return s.replace(/\.jpe?g$/i, '.webp');
             return s;

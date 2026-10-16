@@ -1,5 +1,9 @@
 .gitignire
-\old
-\demo
+#部分特殊归档
+/old
+#用于测试flow
 /node_modules
+#测试集
 /dist
+#本地凭据
+/.env
