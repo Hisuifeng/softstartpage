@@ -27,7 +27,10 @@
 <body>
     <div id="wallpaper-layer" class="hidden" data-parallax="1.2" data-parallax-max="26"></div>
     <div class="wallpaper-hint hidden" id="wallpaperHint">
-        <span class="wallpaper-hint-msg" id="wallpaperHintMsg">喜欢这张壁纸吗？</span>
+        <div class="wallpaper-hint-text">
+            <span class="wallpaper-hint-msg" id="wallpaperHintMsg">喜欢这张壁纸吗？</span>
+            <span class="wallpaper-hint-about hidden" id="wallpaperHintAbout"></span>
+        </div>
         <button type="button" class="wallpaper-hint-btn" id="wallpaperPinBtn" title="固定该壁纸">
             <span class="svg-icon wallpaper-hint-icon" aria-hidden="true" data-svg="pin"></span>
             <span class="wallpaper-hint-label" id="wallpaperPinLabel">固定该壁纸</span>
@@ -263,6 +266,7 @@
                             <label class="toggle-switch"><input type="checkbox" id="toggleDefaultWallpaper"
                                     checked><span class="toggle-slider"></span></label>
                         </div>
+                        <p class="settings-hint wallpaper-about hidden" id="wallpaperAbout"></p>
                         <p class="settings-hint">你想投稿你喜欢的壁纸吗？<a
                                 href="https://github.com/Hisuifeng/softstartpage/issues/1" target="_blank"
                                 rel="noopener noreferrer">点击提交issues</a></p>

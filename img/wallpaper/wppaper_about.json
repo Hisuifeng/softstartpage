@@ -1,0 +1,45 @@
+{
+  "type": "softstartpage-wallpaperabout",
+  "black_num": 4,
+  "light_num": 5,
+  "black_about": [
+    {
+      "paper_name": "wallpaper0",
+      "title": "由 Hikari 推荐"
+    },
+    {
+      "paper_name": "wallpaper1",
+      "title": "由 Hikari 推荐"
+    },
+    {
+      "paper_name": "wallpaper2",
+      "title": "由 Mashiro-Neri 推荐"
+    },
+    {
+      "paper_name": "wallpaper3",
+      "title": "由 Mashiro-Neri 推荐"
+    }
+  ],
+  "light_about": [
+    {
+      "paper_name": "wallpaper0",
+      "title": "由 Mashiro-Neri 推荐"
+    },
+    {
+      "paper_name": "wallpaper1",
+      "title": "由 Mashiro-Neri 推荐"
+    },
+    {
+      "paper_name": "wallpaper2",
+      "title": "由 Mashiro-Neri 推荐"
+    },
+    {
+      "paper_name": "wallpaper3",
+      "title": "由 Hikari 推荐"
+    },
+    {
+      "paper_name": "wallpaper4",
+      "title": "由 Mashiro-Neri 推荐"
+    }
+  ]
+}

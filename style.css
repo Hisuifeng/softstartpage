@@ -283,6 +283,28 @@ body {
     cursor: pointer;
 }
 
+/* 文字区：问题 + 推荐者（上下两行） */
+.wallpaper-hint-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.3;
+}
+
+.wallpaper-hint-about {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+}
+
+.wallpaper-hint-about.hidden {
+    display: none;
+}
+
+/* 固定后只保留图钉图标，推荐者也一并隐藏 */
+.wallpaper-hint.pinned .wallpaper-hint-about {
+    display: none;
+}
+
 .wallpaper-hint-label {
     text-decoration: underline;
     text-underline-offset: 3px;
@@ -347,6 +369,15 @@ body {
 
 .settings-hint a:hover {
     color: var(--text-primary);
+}
+
+/* 设置面板中的壁纸推荐者信息 */
+.wallpaper-about {
+    color: var(--accent);
+}
+
+.wallpaper-about.hidden {
+    display: none;
 }
 
 /* 粒子 */

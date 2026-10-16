@@ -73,6 +73,7 @@
   - 支持网络图片 URL，或上传本地图片；
   - 未设置壁纸时，可随机使用仓库内置壁纸（分暗色 / 亮色两套）；
   - 看到喜欢的仓库壁纸？点右上角「固定该壁纸」就能把它固定下来，再点「取消固定」即可恢复随机；
+  - 右上角提示条会在「喜欢这张壁纸吗？」下方显示该壁纸的推荐者；设置面板「壁纸」区同样会显示当前壁纸的推荐者（固定或随机默认壁纸生效时）；
   - 想把自己收藏的壁纸分享给大家？欢迎[提交 issues](https://github.com/Hisuifeng/softstartpage/issues/1)。
 
 ### 天气
@@ -160,26 +161,39 @@ js/
 | `sp_particles` | 粒子背景开关（默认关闭） |
 | `sp_parallax` | 视差背景开关 |
 | `sp_default_wallpaper` | 未设置壁纸时启用默认随机壁纸（关闭时固定壁纸也一并隐藏，但固定状态保留） |
-| `sp_theme_wallpaper_count` | 每主题默认壁纸张数（默认 8） |
+| `sp_theme_wallpaper_count` | 回退方案：元数据缺失时默认壁纸的探测张数（默认 8） |
 
 ### 自定义仓库壁纸
 
 默认壁纸放在 `img/wallpaper/` 下，按主题分成两套：
 
 ```text
-img/wallpaper/black/   暗色主题壁纸
-img/wallpaper/light/   亮色主题壁纸
+img/wallpaper/black/              暗色主题壁纸
+img/wallpaper/light/              亮色主题壁纸
+img/wallpaper/wppaper_about.json  壁纸数量与推荐者信息
 ```
 
-- 直接替换或新增图片即可，请使用 `.jpg` 并按 `wallpaper0.jpg`、`wallpaper1.jpg`… 连续命名。
-- 随机挑选的索引范围由 `sp_theme_wallpaper_count` 决定（默认 8）；壁纸数量不同时可在控制台调整：
+- 直接替换或新增图片即可，请使用 `.jpg` 并按 `wallpaper0.jpg`、`wallpaper1.jpg`… 从 0 开始连续命名。
+- **数量与推荐者由 `img/wallpaper/wppaper_about.json` 声明**，无需改代码：
 
-```js
-// 例如每套只有 4 张时
-App.Utils.save('sp_theme_wallpaper_count', 4);
+```json
+{
+  "type": "softstartpage-wallpaperabout",
+  "black_num": 4,
+  "light_num": 5,
+  "black_about": [
+    { "paper_name": "wallpaper2", "title": "由 Mashiro-Neri 推荐" }
+  ],
+  "light_about": [
+    { "paper_name": "wallpaper0", "title": "由 Mashiro-Neri 推荐" }
+  ]
+}
 ```
 
-> 仅静态托管生效：本地 `file://` 打开时，受浏览器安全策略限制不会加载仓库壁纸。
+- `black_num` / `light_num`：两套主题的壁纸张数，随机壁纸在 `[0, 数量)` 中取索引。
+- `black_about` / `light_about`：推荐者列表（可选），`paper_name` 为文件名（不含扩展名），`title` 为展示文本。命中的壁纸会在右上角「喜欢这张壁纸吗？」下方显示推荐者。
+
+> 仅静态托管生效：本地 `file://` 打开时，受浏览器安全策略限制不会加载仓库壁纸，元数据也不可读取（此时回退到按 `sp_theme_wallpaper_count` 探测）。
 
 ### 图标
 

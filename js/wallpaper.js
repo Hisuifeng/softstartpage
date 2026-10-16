@@ -26,6 +26,10 @@
         // 各主题默认壁纸列表缓存（静态托管下通过 HEAD 探测 img/wallpaper/{black|light}/）
         _defaults: { black: null, light: null },
 
+        // 壁纸元数据（img/wallpaper/wppaper_about.json）：数量 + 推荐者信息
+        _about: null,
+        _aboutPromise: null,
+
         /** 当前主题对应的壁纸子目录 */
         _themeDir() {
             const light = window.App.Theme ? !App.Theme.isDark()
@@ -34,28 +38,84 @@
         },
 
         /**
-         * 随机挑选当前主题目录下【真实存在】的一张默认壁纸。
+         * 读取壁纸元数据 img/wallpaper/wppaper_about.json（只请求一次，结果缓存）。
+         * 该文件提供每主题的壁纸张数（black_num / light_num）与推荐者（*_about）。
+         * 使用 cache:'no-cache'：仍走 HTTP 缓存，但每次先向服务器校验（未变返回 304），
+         * 既保留缓存又能在 JSON 更新后拿到最新内容；仅作用于本文件，不影响其它资源。
+         * 失败（文件缺失 / file:// 跨域）返回 null，调用方回退到旧的 HEAD 探测。
+         * @returns {Promise<object|null>}
+         */
+        _loadAbout() {
+            if (this._about) return Promise.resolve(this._about);
+            if (this._aboutPromise) return this._aboutPromise;
+            this._aboutPromise = fetch('img/wallpaper/wppaper_about.json', { cache: 'no-cache' })
+                .then(res => (res.ok ? res.json() : null))
+                .then(json => {
+                    if (json && typeof json === 'object') this._about = json;
+                    return this._about;
+                })
+                .catch(() => null);
+            return this._aboutPromise;
+        },
+
+        /** 某主题的壁纸张数（来自元数据；缺失返回 0） */
+        _themeCount(dir) {
+            const n = this._about ? this._about[dir === 'light' ? 'light_num' : 'black_num'] : 0;
+            return Number.isFinite(n) && n > 0 ? n : 0;
+        },
+
+        /**
+         * 从壁纸 URL 反查推荐者信息（如“由 Mashiro-Neri 推荐”）。
+         * 按文件名（wallpaper{N}）在对应主题的 *_about 列表中匹配；无则返回空串。
+         * @param {string} url
+         * @returns {string}
+         */
+        _aboutFor(url) {
+            if (!this._about || !url) return '';
+            const m = /wallpaper(\d+)\.(?:jpg|jpeg|png|webp)$/i.exec(String(url));
+            if (!m) return '';
+            const dir = /\/black\//i.test(url) ? 'black' : (/\/light\//i.test(url) ? 'light' : '');
+            if (!dir) return '';
+            const list = this._about[dir === 'light' ? 'light_about' : 'black_about'];
+            if (!Array.isArray(list)) return '';
+            const name = 'wallpaper' + m[1];
+            const hit = list.find(it => it && it.paper_name === name);
+            return hit && hit.title ? String(hit.title) : '';
+        },
+
+        /**
+         * 随机挑选当前主题目录下的一张默认壁纸。
          *
-         * 【关键改动】先随机确定【单个】索引 → 只对该 URL 发【一次】请求，
-         * 并校验\"响应的 Content-Type 以 image/ 开头\"才算命中：
+         * 【关键改动】不再写死数量上限（旧版默认 8，索引 0–7），也无需逐个
+         * HEAD 探测：改为读取 img/wallpaper/wppaper_about.json 里声明的
+         * black_num / light_num，在 [0, count) 中随机取一个索引直接返回。
          *
-         *   · GitHub Pages：不存在的 wallpaper{N}.jpg → 真 404 → 不通过，
-         *     换下一个随机索引重试。
-         *   · Cloudflare Pages（SPA fallback 开启）：不存在的资源会被兜底成
-         *     200 + text/html 的 index.html（HEAD 的 .ok 会误判成\"壁纸存在\"）。
-         *     因此这里不信任 HEAD/.ok，改为校验 Content-Type 必须 image/* ——
-         *     SPA 兜底页是 text/html，即使 200 也过不了 image/ 校验，
-         *     自然被排除，绝不会被当成壁纸塞进候选列表。
+         *   · GitHub Pages / Cloudflare Pages：该 JSON 随仓库发布，数量即真实
+         *     壁纸数，直接命中；不存在“猜错范围”“SPA 兜底页被误判为壁纸”问题。
+         *   · JSON 读取失败时回退 _probeRandomWallpaper（旧的 HEAD 探测）。
          *
-         * 相比旧版\"HEAD 连发最多 50 个去探测存在哪些\"（在 SPA fallback 下
-         * 会把 50 个不存在的都探测成\"存在\"、列表塞满兜底页），本次：
-         *   - 每次随机只发 1 个请求（命中即停），不会对整目录连发探测；
-         *   - 判定依据由\"HTTP 200\"改为\"真图片 Content-Type\"，对托管形态免疫。
+         * @param {string} dir 'light' | 'black'
+         * @returns {Promise<string|null>} 壁纸 URL；取不到返回 null
+         */
+        async _randomWallpaper(dir) {
+            await this._loadAbout();
+            const count = this._themeCount(dir);
+            if (count > 0) {
+                const i = Math.floor(Math.random() * count);
+                return `img/wallpaper/${dir}/wallpaper${i}.jpg`;
+            }
+            return this._probeRandomWallpaper(dir);
+        },
+
+        /**
+         * 回退方案：元数据不可用时，随机索引发【一次】HEAD 请求并校验
+         * “响应的 Content-Type 以 image/ 开头”才算命中（避免 SPA 兜底页
+         * 的 200 + text/html 被误判为壁纸）。
          *
          * @param {string} dir 'light' | 'black'
          * @returns {Promise<string|null>} 壁纸 URL；探测不到返回 null
          */
-        async _randomWallpaper(dir) {
+        async _probeRandomWallpaper(dir) {
             const count = App.Utils.load('sp_theme_wallpaper_count', 8) || 8;
             const maxAttempts = 6;
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -113,8 +173,10 @@
             this.urlInput = document.getElementById('wallpaperUrlInput');
             this.hint = document.getElementById('wallpaperHint');
             this.hintMsg = document.getElementById('wallpaperHintMsg');
+            this.hintAbout = document.getElementById('wallpaperHintAbout');
             this.hintBtn = document.getElementById('wallpaperPinBtn');
             this.hintLabel = document.getElementById('wallpaperPinLabel');
+            this.settingsAbout = document.getElementById('wallpaperAbout');
 
             if (!this.layer) {
                 console.warn('未找到壁纸图层，跳过壁纸模块');
@@ -139,6 +201,9 @@
             // 绑定按钮事件（注意：这些按钮可能不在主界面，而是在设置面板中，我们使用全局选择器）
             this._bindEvents();
             this.applyToUI();
+
+            // 预加载壁纸元数据（数量 / 推荐者），加载完刷新提示条
+            this._loadAbout().then(() => this._updateHint());
 
             // 主题切换时，若未设置自定义壁纸则换成对应主题的默认壁纸
             const onThemeChange = () => {
@@ -267,6 +332,7 @@
 
         /** 更新右上角提示条：仅在使用仓库壁纸（默认随机或已固定）且壁纸可见时显示 */
         _updateHint() {
+            this._updateSettingsAbout();
             if (!this.hint) return;
             const pinned = this.isPinned();
             const visible = this.layer && !this.layer.classList.contains('hidden');
@@ -280,8 +346,37 @@
                 this.hint.classList.toggle('pinned', pinned);
                 if (this.hintLabel) this.hintLabel.textContent = pinned ? '取消固定' : '固定该壁纸';
                 if (this.hintBtn) this.hintBtn.title = pinned ? '取消固定' : '固定该壁纸';
+
+                // 推荐者信息（仅未固定时展示；无匹配则隐藏）
+                if (this.hintAbout) {
+                    const about = !pinned ? this._aboutFor(this._currentDefaultUrl) : '';
+                    if (about) {
+                        this.hintAbout.textContent = about;
+                        this.hintAbout.classList.remove('hidden');
+                    } else {
+                        this.hintAbout.textContent = '';
+                        this.hintAbout.classList.add('hidden');
+                    }
+                }
             } else {
                 this.hint.classList.add('hidden');
+            }
+        },
+
+        /**
+         * 更新设置面板中的推荐者信息：当前使用的仓库壁纸（固定、或开启随机默认）
+         * 命中 *_about 时显示，否则隐藏。
+         */
+        _updateSettingsAbout() {
+            if (!this.settingsAbout) return;
+            const visible = this.layer && !this.layer.classList.contains('hidden');
+            const about = visible ? this._aboutFor(this._currentDefaultUrl) : '';
+            if (about) {
+                this.settingsAbout.textContent = about;
+                this.settingsAbout.classList.remove('hidden');
+            } else {
+                this.settingsAbout.textContent = '';
+                this.settingsAbout.classList.add('hidden');
             }
         },
 

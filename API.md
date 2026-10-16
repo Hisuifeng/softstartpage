@@ -217,12 +217,14 @@ https://api.open-meteo.com/v1/cma?latitude=39.9042&longitude=116.4074&daily=sunr
 ## 5. 壁纸资源（仓库默认壁纸）
 
 - **路径**：`img/wallpaper/{black|light}/wallpaper{N}.jpg`（相对路径；`black` 对应暗色主题，`light` 对应亮色主题）。
-- **机制**：随机选取一个索引后，对该 URL 发**一次** `fetch` HEAD 请求，并校验响应 `Content-Type` 以 `image/` 开头才算命中（最多重试 6 次）。
+- **数量与推荐者**：由 `img/wallpaper/wppaper_about.json` 声明——
+  - `black_num` / `light_num`：两套主题的壁纸张数，随机选取在 `[0, 数量)` 中进行（不再写死上限 7）；
+  - `black_about` / `light_about`：推荐者列表（可选），`paper_name` = 文件名（不含扩展名），`title` = 展示文本；命中的壁纸会在右上角「喜欢这张壁纸吗？」下方显示推荐者。
+- **回退方案**：元数据读取失败时，按 `sp_theme_wallpaper_count`（默认 8）随机索引发**一次** `fetch` HEAD 请求，并校验响应 `Content-Type` 以 `image/` 开头才算命中（最多重试 6 次）。
 - **为何校验 Content-Type**：
   - GitHub Pages 上不存在的图片返回真 404；
   - Cloudflare Pages 若开启 SPA fallback，不存在的资源会被兜底为 `200 + text/html`（`index.html`），仅看 `.ok` 会误判，故必须校验是否为真实图片类型。
-- **说明**：仅在**静态托管环境**下生效；本地 `file://` 打开时受浏览器安全策略限制，不会加载仓库壁纸（自定义 URL / 本地上传壁纸不受影响）。
-- **张数配置**：`sp_theme_wallpaper_count`（默认 8）。
+- **说明**：仅在**静态托管环境**下生效；本地 `file://` 打开时受浏览器安全策略限制，不会加载仓库壁纸与元数据（自定义 URL / 本地上传壁纸不受影响）。
 
 ---
 
