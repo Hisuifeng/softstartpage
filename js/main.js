@@ -30,6 +30,7 @@
         defaultWallpaperEnabled: App.Utils.load('sp_default_wallpaper', true),
         hdWallpaperEnabled: App.Utils.load('sp_hd_wallpaper', false),
         customEngines: App.Utils.load('sp_custom_engines', []),
+        hiddenEngines: App.Utils.load('sp_hidden_engines', []),
         currentEngineKey: App.Utils.load('sp_engine', 'google'),
         themeMode: App.Utils.load('sp_theme', 'auto')
     };

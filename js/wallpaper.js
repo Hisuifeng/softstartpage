@@ -395,12 +395,26 @@
             if (!this.settingsAbout) return;
             const visible = this.layer && !this.layer.classList.contains('hidden');
             const about = visible ? this._aboutFor(this._currentDefaultUrl) : '';
+            const wasHidden = this.settingsAbout.classList.contains('hidden');
             if (about) {
                 this.settingsAbout.textContent = about;
                 this.settingsAbout.classList.remove('hidden');
             } else {
                 this.settingsAbout.textContent = '';
                 this.settingsAbout.classList.add('hidden');
+            }
+            // 该行位于设置面板的壁纸分区，显隐会改变下方分区高度；
+            // 若此时正有分区跳转在进行，通知设置面板重新对齐。
+            if (wasHidden !== this.settingsAbout.classList.contains('hidden')) {
+                this._notifySettingsLayoutChanged();
+            }
+        },
+
+        /** 通知设置面板：本模块的异步更新可能改变了分区高度 */
+        _notifySettingsLayoutChanged() {
+            const settings = window.App && window.App.Settings;
+            if (settings && typeof settings._realignJump === 'function') {
+                settings._realignJump();
             }
         },
 

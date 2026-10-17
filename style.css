@@ -1013,6 +1013,34 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    position: relative;
+}
+
+/* 跳转定位时的分区高亮闪烁 */
+.settings-group.section-highlight::before {
+    content: '';
+    position: absolute;
+    inset: -10px -12px;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--accent-strong);
+    background: var(--accent-dim);
+    pointer-events: none;
+    animation: section-highlight 1.6s var(--transition-smooth) forwards;
+}
+
+@keyframes section-highlight {
+    0% {
+        opacity: 0;
+    }
+    15% {
+        opacity: 1;
+    }
+    65% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
 }
 
 .settings-group-label {
@@ -1035,6 +1063,30 @@ body {
 
 .settings-row-label {
     font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.about-value {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    text-align: right;
+    word-break: break-word;
+}
+
+.about-value .about-sub {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+}
+
+.about-link {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color var(--transition-fast);
+}
+
+.about-link:hover {
     color: var(--text-primary);
 }
 
@@ -1549,6 +1601,107 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+/* 默认引擎显示/隐藏 */
+.default-engine-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.default-engine-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    background: var(--settings-row-bg);
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast), opacity var(--transition-fast);
+}
+
+.default-engine-item:hover {
+    background: var(--btn-hover-bg);
+}
+
+.default-engine-item.is-hidden {
+    opacity: 0.55;
+}
+
+.default-engine-item.is-hidden .default-engine-name {
+    text-decoration: line-through;
+}
+
+.default-engine-name {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.engine-visibility-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    flex: 0 0 auto;
+}
+
+.engine-visibility-btn:hover:not([disabled]) {
+    background: var(--btn-hover-bg);
+    color: var(--accent);
+}
+
+.engine-visibility-btn[disabled] {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.engine-visibility-btn .svg-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.custom-engine-item .drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 32px;
+    color: var(--text-tertiary);
+    cursor: grab;
+    border-radius: 6px;
+    transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.custom-engine-item .drag-handle:hover {
+    color: var(--accent);
+    background: var(--btn-hover-bg);
+}
+
+.custom-engine-item .drag-handle:active {
+    cursor: grabbing;
+}
+
+.custom-engine-item .drag-handle .svg-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.custom-engine-item.dragging {
+    opacity: 0.4;
+}
+
+.custom-engine-item.drag-over {
+    box-shadow: 0 -2px 0 var(--accent);
 }
 
 .custom-engine-item {

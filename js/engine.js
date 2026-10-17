@@ -19,6 +19,9 @@
         // 自定义引擎列表
         customEngines: [],
 
+        // 已隐藏的默认引擎 key 列表
+        hiddenEngines: [],
+
         // 当前选中的引擎 key
         currentKey: 'google',
 
@@ -50,16 +53,25 @@
                 this.customEngines = App.Utils.load('sp_custom_engines', []);
             }
 
+            // 恢复已隐藏的默认引擎
+            const initialHidden = window.App.state && Array.isArray(window.App.state.hiddenEngines)
+                ? window.App.state.hiddenEngines
+                : App.Utils.load('sp_hidden_engines', []);
+            this.hiddenEngines = Array.isArray(initialHidden)
+                ? initialHidden.filter(k => Object.prototype.hasOwnProperty.call(this.defaultEngines, k))
+                : [];
+
             // 将当前引擎 key 写入全局状态
             if (!window.App.state) window.App.state = {};
             window.App.state.currentEngineKey = this.currentKey;
             window.App.state.customEngines = this.customEngines;
+            window.App.state.hiddenEngines = this.hiddenEngines;
 
             this.render();
             this._bindEvents();
         },
 
-        /** 获取所有引擎（默认 + 自定义） */
+        /** 获取所有引擎（默认 + 自定义，不含已隐藏的默认引擎） */
         getAll() {
             const engines = { ...this.defaultEngines };
             this.customEngines.forEach(ce => {
@@ -69,6 +81,11 @@
                     home: ce.home || '',
                     api: null
                 };
+            });
+            (this.hiddenEngines || []).forEach(key => {
+                if (Object.prototype.hasOwnProperty.call(this.defaultEngines, key)) {
+                    delete engines[key];
+                }
             });
             return engines;
         },
@@ -135,6 +152,36 @@
                 if (firstKey) this.switchTo(firstKey);
             }
             this.render();
+        },
+
+        /** 设置已隐藏的默认引擎列表并保存 */
+        setHiddenKeys(keys) {
+            const valid = Array.from(new Set(Array.isArray(keys) ? keys : []))
+                .filter(k => Object.prototype.hasOwnProperty.call(this.defaultEngines, k));
+            this.hiddenEngines = valid;
+            window.App.state.hiddenEngines = valid;
+            App.Utils.save('sp_hidden_engines', valid);
+            // 如果当前引擎被隐藏，自动切到第一个可见引擎
+            const all = this.getAll();
+            if (!all[this.currentKey]) {
+                const firstKey = Object.keys(all)[0];
+                if (firstKey) this.switchTo(firstKey);
+            }
+            this.render();
+            return this.hiddenEngines;
+        },
+
+        /** 隐藏/显示指定默认引擎 */
+        toggleHidden(key, hidden) {
+            const set = new Set(this.hiddenEngines || []);
+            if (hidden) set.add(key);
+            else set.delete(key);
+            return this.setHiddenKeys(Array.from(set));
+        },
+
+        /** 判断默认引擎是否已隐藏 */
+        isHidden(key) {
+            return (this.hiddenEngines || []).includes(key);
         },
 
         /** 添加自定义引擎 */

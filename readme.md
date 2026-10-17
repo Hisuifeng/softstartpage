@@ -64,7 +64,7 @@
 
 ### 搜索
 
-- **多引擎搜索**：内置 Google / Bing / Baidu 等，可添加自定义搜索引擎，支持 `Ctrl/Alt/Shift + 数字` 快捷切换。
+- **多引擎搜索**：内置 Google / Bing / Baidu / DuckDuckGo，可添加自定义搜索引擎（支持**拖拽排序**），默认引擎可在设置面板中逐项**隐藏**（隐藏后不出现在切换器、不占用数字快捷键，至少保留一个），支持 `Ctrl/Alt/Shift + 数字` 快捷切换。
 - **搜索联想**：接入搜索引擎联想接口（可切换备用 API），支持搜索历史与一键清除。
 
 ### 书签与壁纸
@@ -90,7 +90,7 @@
 
 ### 设置
 
-- **设置面板**：左侧分类导航（外观主题 / 时间显示 / 动态背景 / 壁纸 / 搜索与引擎 / 书签管理 / 位置与天气 / 快捷键），右侧为对应设置项，支持点击定位与滚动高亮。
+- **设置面板**：左侧分类导航（外观主题 / 时间显示 / 动态背景 / 壁纸 / 搜索与引擎 / 书签管理 / 位置与天气 / 快捷键 / 关于），右侧为对应设置项，支持点击定位，定位到的分类会高亮闪烁提示。
 - **恢复默认**：不会清除你的书签和自定义引擎；书签与自定义引擎另有独立的“清空”按钮。
 
 ## 常见说明
@@ -162,7 +162,7 @@ node build.js        # 或 npm run build
 - 紫外线：`https://api.open-meteo.com/v1/forecast`（Open-Meteo 默认模型，补齐 CMA 所缺的 UV 数据）
 - 位置：`https://api.ip.sb/geoip`（IP 定位，仅 Open-Meteo 数据源使用，缓存 24 小时）
 
-> 完整的接口参数、返回字段、缓存策略与注意事项见 [API.md](./API.md)。
+> 完整的接口参数、返回字段、缓存策略与注意事项见 [API.md](./doc/API.md)。
 
 ### 存储
 
@@ -178,8 +178,9 @@ node build.js        # 或 npm run build
 | `sp_suggestions` | 搜索联想开关 |
 | `sp_fallback` | 联想备用 API（baidu/bing/google） |
 | `sp_modifier` | 引擎切换修饰键 |
-| `sp_custom_engines` | 自定义搜索引擎 |
+| `sp_custom_engines` | 自定义搜索引擎（顺序即展示顺序） |
 | `sp_engine` | 当前引擎 |
+| `sp_hidden_engines` | 已隐藏的默认引擎（默认空） |
 | `sp_weather_effect` | 雨雪特效开关 |
 | `sp_rain_opacity` | 雨雪特效透明度（0–1，默认 1） |
 | `sp_rain_colors` | 雨效颜色（按主题，`{ dark, light }`，默认天蓝） |

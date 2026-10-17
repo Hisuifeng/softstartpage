@@ -210,7 +210,9 @@ https://api.open-meteo.com/v1/cma?latitude=39.9042&longitude=116.4074&daily=sunr
 | Bing | `https://www.bing.com/search?q=` | `https://www.bing.com` |
 | DuckDuckGo | `https://duckduckgo.com/?q=` | `https://duckduckgo.com` |
 
-> 另有自定义搜索引擎（`sp_custom_engines`）由用户配置搜索 URL 模板。
+> 另有自定义搜索引擎（`sp_custom_engines`）由用户配置搜索 URL 模板，顺序即列表顺序（设置面板中可拖拽调整）。
+>
+> 默认引擎（Google / 百度 / Bing / DuckDuckGo）可在设置面板逐项隐藏（`sp_hidden_engines`）；隐藏后不出现在搜索框下方的引擎切换器，也不占用数字快捷键；至少保留一个可见引擎。若当前引擎被隐藏，会自动切换到第一个可见引擎。
 
 ---
 
@@ -242,3 +244,6 @@ https://api.open-meteo.com/v1/cma?latitude=39.9042&longitude=116.4074&daily=sunr
 | `sp_wallpaper` | 当前壁纸（`{ type: 'url'\|'local'\|'fixed'\|'none', value }`） | 持久 |
 | `sp_default_wallpaper` | 未设置壁纸时启用随机默认壁纸（默认 `true`） | 持久 |
 | `sp_hd_wallpaper` | 仓库壁纸使用高清原图（默认 `false`） | 持久 |
+| `sp_engine` | 当前搜索引擎 key（默认 `google`） | 持久 |
+| `sp_custom_engines` | 自定义搜索引擎列表（顺序即展示顺序） | 持久 |
+| `sp_hidden_engines` | 已隐藏的默认引擎 key 列表（默认 `[]`） | 持久 |

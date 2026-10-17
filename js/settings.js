@@ -7,6 +7,10 @@
     window.App = window.App || {};
     if (!window.App.state) window.App.state = {};
 
+    // 分区高亮框（.section-highlight::before）向外扩出的距离，
+    // 跳转时需让出这段空间，避免高亮框顶部被滚动口裁掉。
+    const SECTION_HIGHLIGHT_OVERHANG = 10;
+
     const Settings = {
         overlay: null,
         toggle24Hour: null,
@@ -31,8 +35,15 @@
         // 侧边栏
         sidebar: null,
         body: null,
+        panel: null,
         navItems: null,
         navSections: null,
+
+        // 分区跳转定位状态（用于异步内容变化后重对齐）
+        jumpSectionId: null,
+        jumpTarget: 0,
+        jumpAt: 0,
+        realignTimer: null,
 
         // 自定义经纬度
         customLatInput: null,
@@ -55,6 +66,10 @@
         addCustomEngineBtn: null,
         clearEnginesBtn: null,
         customEnginesList: null,
+        defaultEngineList: null,
+
+        // 自定义引擎拖拽状态
+        draggedEngineItem: null,
 
         init() {
             this.overlay = document.getElementById('settingsOverlay');
@@ -97,6 +112,7 @@
             this.addCustomEngineBtn = document.getElementById('btnAddCustomEngine');
             this.clearEnginesBtn = document.getElementById('btnClearCustomEngines');
             this.customEnginesList = document.getElementById('customEnginesList');
+            this.defaultEngineList = document.getElementById('defaultEngineList');
 
             this._bindEvents();
             this._initSidebar();
@@ -107,6 +123,7 @@
             if (!this.overlay) return;
             this._syncUI();
             if (window.App.Bookmarks) App.Bookmarks.renderEditor();
+            this._renderDefaultEngines();
             this._renderCustomEnginesEditor();
             if (this.body) this.body.scrollTop = 0;
             this._updateActiveNav();
@@ -120,8 +137,65 @@
             if (!target || !this.body) return;
             // 等待面板显示、布局完成后再滚动定位
             requestAnimationFrame(() => {
-                this.body.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
+                this._scrollToSection(target);
+                this._highlightSection(target);
             });
+        },
+
+        /**
+         * 计算滚动定位到指定分区所需的目标 scrollTop。
+         * 让出高亮框的上外扩距离，使高亮框完整可见。
+         */
+        _sectionTarget(section) {
+            return Math.max(0, section.offsetTop - SECTION_HIGHLIGHT_OVERHANG);
+        },
+
+        /**
+         * 滚动定位到指定分区。
+         * 记录本次跳转的目标，供 _realignJump 在异步内容（如壁纸推荐者文案）
+         * 改变上方分区高度后做一次重对齐。
+         */
+        _scrollToSection(section) {
+            if (!this.body || !section) return;
+            this.jumpSectionId = section.id;
+            this.jumpTarget = this._sectionTarget(section);
+            this.jumpAt = Date.now();
+            this.body.scrollTo({ top: this.jumpTarget, behavior: 'smooth' });
+            // 兜底：异步内容加载完成后再校正一次
+            clearTimeout(this.realignTimer);
+            this.realignTimer = setTimeout(() => this._realignJump(), 500);
+        },
+
+        /**
+         * 若跳转目标分区因上方内容异步变化而偏移，则重新滚动到正确位置。
+         * 比较存储的目标值而非实时 scrollTop，避免平滑滚动过程中的误触发。
+         */
+        _realignJump() {
+            if (!this.body || !this.jumpSectionId) return;
+            if (!this.overlay || !this.overlay.classList.contains('open')) return;
+            if (Date.now() - this.jumpAt > 3000) {
+                this.jumpSectionId = null;
+                return;
+            }
+            const section = document.getElementById(this.jumpSectionId);
+            if (!section) return;
+            const target = this._sectionTarget(section);
+            if (target === this.jumpTarget) return;
+            this.jumpTarget = target;
+            this.body.scrollTo({ top: target, behavior: 'smooth' });
+        },
+
+        /** 高亮闪烁指定分区，提示用户当前定位位置 */
+        _highlightSection(section) {
+            if (!section) return;
+            section.classList.remove('section-highlight');
+            // 强制重排以重新触发动画
+            void section.offsetWidth;
+            section.classList.add('section-highlight');
+            clearTimeout(section._highlightTimer);
+            section._highlightTimer = setTimeout(() => {
+                section.classList.remove('section-highlight');
+            }, 1800);
         },
 
         close() {
@@ -235,6 +309,8 @@
             state.defaultWallpaperEnabled = true;
             state.hdWallpaperEnabled = false;
             state.parallaxEnabled = true;
+            // 默认引擎全部恢复显示
+            state.hiddenEngines = [];
             // 主题恢复默认（跟随系统）
             if (window.App.Theme) App.Theme.setMode('auto');
             // 清除自定义经纬度
@@ -264,6 +340,7 @@
             App.Utils.save('sp_default_wallpaper', true);
             App.Utils.save('sp_hd_wallpaper', false);
             App.Utils.save('sp_parallax', true);
+            App.Utils.save('sp_hidden_engines', []);
             if (window.App.Particles) App.Particles.setEnabled(false);
             if (window.App.Parallax) App.Parallax.setEnabled(true);
             if (window.App.Weather) App.Weather.setOpacity(1);
@@ -274,6 +351,7 @@
             if (window.App.Clock) App.Clock.refresh();
             // 书签与自定义搜索引擎保留，不随恢复默认清除
             if (window.App.Engine) {
+                App.Engine.setHiddenKeys([]);
                 App.Engine.switchTo('google');
             }
             if (window.App.Weather) {
@@ -345,17 +423,63 @@
             if (omFields) omFields.hidden = !isOpenMeteo;
         },
 
+        /** 渲染默认引擎的显示/隐藏开关列表 */
+        _renderDefaultEngines() {
+            if (!this.defaultEngineList) return;
+            const Engine = window.App.Engine;
+            if (!Engine || !Engine.defaultEngines) {
+                this.defaultEngineList.innerHTML = '';
+                return;
+            }
+
+            const hidden = Engine.hiddenEngines || [];
+            const visibleCount = Object.keys(Engine.getAll()).length;
+            this.defaultEngineList.innerHTML = Object.keys(Engine.defaultEngines).map(key => {
+                const engine = Engine.defaultEngines[key];
+                const isHidden = hidden.includes(key);
+                const isLastVisible = !isHidden && visibleCount <= 1;
+                const name = App.Utils.escapeHtml(engine.name);
+                return `
+                <div class="default-engine-item${isHidden ? ' is-hidden' : ''}" data-key="${key}">
+                    <span class="default-engine-name">${name}</span>
+                    <button class="engine-visibility-btn" data-key="${key}"
+                        title="${isHidden ? '显示' : '隐藏'}${name}${isLastVisible ? '（至少保留一个引擎）' : ''}"
+                        aria-label="${isHidden ? '显示' : '隐藏'}${name}"${isLastVisible ? ' disabled' : ''}>
+                        ${App.Utils.svg(isHidden ? 'eyeOff' : 'eye')}
+                    </button>
+                </div>`;
+            }).join('');
+
+            this.defaultEngineList.querySelectorAll('.engine-visibility-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (btn.disabled) return;
+                    const key = btn.dataset.key;
+                    const all = window.App.Engine.getAll();
+                    const isHidden = window.App.Engine.isHidden(key);
+                    if (!isHidden && Object.keys(all).length <= 1) {
+                        App.Utils.showToast('至少保留一个搜索引擎');
+                        return;
+                    }
+                    window.App.Engine.toggleHidden(key, !isHidden);
+                    this._renderDefaultEngines();
+                });
+            });
+        },
+
         _renderCustomEnginesEditor() {
             if (!this.customEnginesList) return;
             const customEngines = window.App.state.customEngines || [];
             this.customEnginesList.innerHTML = customEngines.map((ce, idx) => `
-                <div class="custom-engine-item" data-id="${ce.id}">
+                <div class="custom-engine-item" data-id="${ce.id}" data-index="${idx}">
+                    <span class="drag-handle" draggable="true" title="拖拽排序" aria-label="拖拽排序">${App.Utils.svg('grip')}</span>
                     <input class="settings-input" placeholder="引擎名称" value="${App.Utils.escapeHtml(ce.name||'')}" data-field="name" data-idx="${idx}">
                     <input class="settings-input" placeholder="搜索URL (用 {q} 代替关键词)" value="${App.Utils.escapeHtml(ce.url||'')}" data-field="url" data-idx="${idx}">
                     <input class="settings-input" placeholder="主页URL (可选)" value="${App.Utils.escapeHtml(ce.home||'')}" data-field="home" data-idx="${idx}">
                     <button class="btn-icon-danger" data-idx="${idx}" title="删除">${App.Utils.svg('close')}</button>
                 </div>
             `).join('');
+
+            this._bindEngineDragEvents();
 
             this.customEnginesList.querySelectorAll('.btn-icon-danger').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -367,6 +491,96 @@
                         this._renderCustomEnginesEditor();
                     }
                 });
+            });
+        },
+
+        // ---------- 自定义引擎拖拽排序 ----------
+        _bindEngineDragEvents() {
+            if (!this.customEnginesList) return;
+
+            this.customEnginesList.querySelectorAll('.custom-engine-item').forEach(item => {
+                item.addEventListener('dragover', (e) => this._onEngineDragOver(e));
+                item.addEventListener('dragleave', (e) => this._onEngineDragLeave(e));
+                item.addEventListener('drop', (e) => this._onEngineDrop(e));
+                item.addEventListener('dragend', () => this._onEngineDragEnd());
+            });
+
+            this.customEnginesList.querySelectorAll('.drag-handle').forEach(handle => {
+                handle.addEventListener('dragstart', (e) => this._onEngineDragStart(e));
+            });
+        },
+
+        _onEngineDragStart(e) {
+            const item = e.target.closest('.custom-engine-item');
+            if (!item) return;
+            this.draggedEngineItem = item;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', item.dataset.id || item.dataset.index || '');
+            try {
+                e.dataTransfer.setDragImage(item, 20, Math.max(1, item.offsetHeight / 2));
+            } catch (err) { /* 部分浏览器不支持自定义拖拽图像，忽略 */ }
+            item.classList.add('dragging');
+        },
+
+        _onEngineDragOver(e) {
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            const target = e.target.closest('.custom-engine-item');
+            if (target && target !== this.draggedEngineItem) {
+                target.classList.add('drag-over');
+            }
+        },
+
+        _onEngineDragLeave(e) {
+            const target = e.target.closest('.custom-engine-item');
+            if (target) target.classList.remove('drag-over');
+        },
+
+        _onEngineDrop(e) {
+            e.preventDefault();
+            const target = e.target.closest('.custom-engine-item');
+            if (!target || !this.draggedEngineItem || target === this.draggedEngineItem) return;
+
+            const parent = this.customEnginesList;
+            const fromIndex = parseInt(this.draggedEngineItem.dataset.index, 10);
+            const targetIndex = parseInt(target.dataset.index, 10);
+            if (isNaN(fromIndex) || isNaN(targetIndex)) return;
+
+            // 调整 DOM 顺序
+            if (fromIndex < targetIndex) {
+                parent.insertBefore(this.draggedEngineItem, target.nextSibling);
+            } else {
+                parent.insertBefore(this.draggedEngineItem, target);
+            }
+
+            // 同步 state 中的顺序（以 DOM 顺序为准，保存时再持久化）
+            const byId = new Map((window.App.state.customEngines || []).map(e => [String(e.id), e]));
+            const ordered = [];
+            parent.querySelectorAll('.custom-engine-item').forEach(item => {
+                const found = byId.get(String(item.dataset.id));
+                if (found) ordered.push(found);
+            });
+            window.App.state.customEngines = ordered;
+
+            // 重新分配索引
+            parent.querySelectorAll('.custom-engine-item').forEach((item, idx) => {
+                item.dataset.index = idx;
+                item.querySelectorAll('[data-idx]').forEach(el => { el.dataset.idx = idx; });
+            });
+
+            this._clearEngineDragStyles();
+            this.draggedEngineItem = null;
+        },
+
+        _onEngineDragEnd() {
+            this._clearEngineDragStyles();
+            this.draggedEngineItem = null;
+        },
+
+        _clearEngineDragStyles() {
+            if (!this.customEnginesList) return;
+            this.customEnginesList.querySelectorAll('.custom-engine-item').forEach(item => {
+                item.classList.remove('dragging', 'drag-over');
             });
         },
 
@@ -513,6 +727,7 @@
         _initSidebar() {
             this.sidebar = document.getElementById('settingsSidebar');
             this.body = document.getElementById('settingsPanelBody');
+            this.panel = this.overlay ? this.overlay.querySelector('.settings-panel') : null;
             if (!this.sidebar || !this.body) return;
 
             this.navItems = Array.from(this.sidebar.querySelectorAll('.settings-nav-item'));
@@ -523,8 +738,17 @@
             this.navItems.forEach(item => {
                 item.addEventListener('click', () => {
                     const target = document.getElementById(item.dataset.target);
-                    if (target) this.body.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
+                    if (target) {
+                        this._scrollToSection(target);
+                        this._highlightSection(target);
+                    }
                 });
+            });
+
+            // 面板展开动画结束后再校正一次（此时上方异步内容多已就位）
+            this.panel?.addEventListener('transitionend', (e) => {
+                if (e.target !== this.panel) return;
+                this._realignJump();
             });
 
             this.body.addEventListener('scroll', () => this._updateActiveNav(), { passive: true });

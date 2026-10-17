@@ -253,11 +253,9 @@
                 parent.insertBefore(this.draggedItem, target);
             }
 
-            // 更新书签数组顺序
+            // 更新书签数组顺序（DOM 中拖拽项落在 target 之后 → 数组插入索引即 targetIndex）
             const movedItem = window.App.state.bookmarks.splice(fromIndex, 1)[0];
-            // 注意插入索引：如果目标在移动前的前面，移除后目标索引可能需调整
-            const newTargetIndex = fromIndex < targetIndex ? targetIndex - 1 : targetIndex;
-            window.App.state.bookmarks.splice(newTargetIndex, 0, movedItem);
+            window.App.state.bookmarks.splice(targetIndex, 0, movedItem);
 
             // 重新分配所有 data-index 属性
             const allItems = parent.querySelectorAll('.bookmark-edit-item');
