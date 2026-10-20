@@ -3,7 +3,7 @@
  * 零依赖构建脚本：node build.js
  *
  * 产物输出到 dist/：
- *   · js 分片按顺序拼接为 assets/bundle.<hash>.js（13 请求 -> 1 请求）
+ *   · js 分片按顺序拼接为 assets/bundle.<hash>.js（14 请求 -> 1 请求）
  *   · style.css 重命名为 assets/style.<hash>.css
  *   · 壁纸 JPG 压缩为 WebP（最长边 1920，q80）并让代码引用 .webp；
  *     原图另存到 img/wallpaper/{dir}/orig/，供设置里的“使用高清原图”开关按需加载
@@ -22,8 +22,8 @@ const ROOT = __dirname;
 const DIST = path.join(ROOT, 'dist');
 const ASSETS = path.join(DIST, 'assets');
 const JS_ORDER = [
-    'utils', 'theme', 'particles', 'parallax', 'clock', 'wallpaper',
-    'engine', 'search', 'bookmarks', 'settings', 'worldclock', 'weather', 'main'
+    'utils', 'modal', 'sortable', 'theme', 'particles', 'parallax', 'clock', 'wallpaper',
+    'engine', 'search', 'bookmarks', 'data', 'settings', 'worldclock', 'weather', 'main'
 ];
 
 const log = (...args) => console.log('[build]', ...args);
@@ -164,15 +164,10 @@ function buildHtml(bundleFile, styleFile) {
 }
 
 function buildHeaders() {
-    const headers = [
-        '/assets/*',
-        '  Cache-Control: public, max-age=31536000, immutable',
-        '/img/*',
-        '  Cache-Control: public, max-age=604800',
-        '/*',
-        '  X-Content-Type-Options: nosniff'
-    ].join('\n') + '\n';
-    fs.writeFileSync(path.join(DIST, '_headers'), headers);
+    // 单一来源：根目录 _headers 即最终缓存策略（含 HTML no-cache，防止部署后
+    // 旧 HTML 引用已删除的 hash 资源导致白屏），构建时原样拷贝到 dist/
+    copyFile(path.join(ROOT, '_headers'), path.join(DIST, '_headers'));
+    log('_headers -> dist/_headers（沿用根目录单一来源）');
 }
 
 async function main() {
@@ -185,7 +180,7 @@ async function main() {
     buildHtml(bundleFile, styleFile);
 
     copyFile(path.join(ROOT, 'img', 'favicon.png'), path.join(DIST, 'img', 'favicon.png'));
-    copyFile(path.join(ROOT, 'img', 'wallpaper', 'wppaper_about.json'), path.join(DIST, 'img', 'wallpaper', 'wppaper_about.json'));
+    copyFile(path.join(ROOT, 'img', 'wallpaper', 'wallpaper_about.json'), path.join(DIST, 'img', 'wallpaper', 'wallpaper_about.json'));
 
     buildHeaders();
     fs.writeFileSync(path.join(DIST, '.nojekyll'), '');

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * clock.js
  * 时钟和日期模块
  * 挂载于 window.App.Clock
@@ -10,64 +10,111 @@
         clockEl: null,
         dateEl: null,
         timer: null,
+        // 结构缓存：仅当格式开关变化时重建 DOM，每秒只改文本，避免 innerHTML 重绘打断冒号动画
+        _parts: null,
+        _structKey: '',
+        _lastDate: '',
 
         init() {
+
+            if (this._inited) return; // M14 防重入：document/window 级监听只绑一次
+
+            this._inited = true;
             this.clockEl = document.getElementById('clock');
             this.dateEl = document.getElementById('dateText');
             if (!this.clockEl || !this.dateEl) return;
 
+            this._lastDate = '';
+            this._structKey = '';
+            this._parts = null;
             this.update(); // 立即显示
-            this.timer = setInterval(() => this.update(), 1000);
+            this._schedule();
+        },
+
+        /** 对齐到下一整秒调度，避免 setInterval 漂移 */
+        _schedule() {
+            clearTimeout(this.timer);
+            const delay = 1000 - (Date.now() % 1000) + 10;
+            this.timer = setTimeout(() => {
+                this.update();
+                this._schedule();
+            }, delay);
+        },
+
+        /** 按当前格式构建时钟 DOM（只在结构变化时调用） */
+        _buildParts(tf) {
+            const mk = (cls, style) => {
+                const el = document.createElement('span');
+                if (cls) el.className = cls;
+                if (style) el.setAttribute('style', style);
+                return el;
+            };
+            const frag = document.createDocumentFragment();
+            const hh = mk('clock-grad');
+            const colon1 = mk('colon clock-grad');
+            colon1.textContent = ':';
+            const mm = mk('clock-grad');
+            frag.append(hh, colon1, mm);
+
+            const parts = { hh, mm, ss: null, ampm: null };
+
+            if (tf.showSeconds) {
+                const colon2 = mk('colon clock-grad', 'animation:none;opacity:0.35;font-size:0.7em;');
+                colon2.textContent = ':';
+                const ss = mk('clock-grad', 'font-size:0.55em;opacity:0.5;');
+                frag.append(colon2, ss);
+                parts.ss = ss;
+            }
+            if (tf.hour24 === false) {
+                const ampm = mk('', 'font-size:0.4em;opacity:0.55;');
+                frag.append(document.createTextNode(' '), ampm);
+                parts.ampm = ampm;
+            }
+            this.clockEl.replaceChildren(frag);
+            this._parts = parts;
+        },
+
+        /**
+         * 时/分/秒/上下午拆解（M8 DRY：update 与 formatTime 共用）
+         * @param {Date} date
+         * @param {boolean} use24 是否 24 小时制
+         */
+        _timeParts(date, use24) {
+            const h24 = date.getHours();
+            return {
+                hourStr: use24
+                    ? String(h24).padStart(2, '0')
+                    : String(h24 % 12 || 12).padStart(2, '0'),
+                m: String(date.getMinutes()).padStart(2, '0'),
+                s: String(date.getSeconds()).padStart(2, '0'),
+                ampm: h24 >= 12 ? 'PM' : 'AM'
+            };
         },
 
         update() {
-            const tf = App.state.timeFormat;
+            const tf = App.state.timeFormat || {};
+            const use24 = tf.hour24 !== false; // 与 formatTime/设置默认值语义一致：缺省即 24 小时制
             const now = new Date();
-            const h24 = now.getHours();
-            const m = String(now.getMinutes()).padStart(2, '0');
-            const s = String(now.getSeconds()).padStart(2, '0');
-            const y = now.getFullYear();
-            const mo = String(now.getMonth() + 1).padStart(2, '0');
-            const d = String(now.getDate()).padStart(2, '0');
 
-            const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-            const weekDaysShort = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-            const wd = weekDays[now.getDay()];
-            const wds = weekDaysShort[now.getDay()];
+            // ---- 日期：仅跨天 / 格式变化时写 DOM ----
+            const dateStr = this.formatDate(now);
+            if (dateStr !== this._lastDate) {
+                this.dateEl.textContent = dateStr;
+                this._lastDate = dateStr;
+            }
 
-            // 构建时间 HTML
-            let timeHtml;
-            let ampmHtml = '';
-            if (tf.hour24) {
-                timeHtml = `<span class="clock-grad">${String(h24).padStart(2, '0')}</span><span class="colon clock-grad">:</span><span class="clock-grad">${m}</span>`;
-            } else {
-                const h12 = h24 % 12 || 12;
-                const ampm = h24 >= 12 ? 'PM' : 'AM';
-                timeHtml = `<span class="clock-grad">${String(h12).padStart(2, '0')}</span><span class="colon clock-grad">:</span><span class="clock-grad">${m}</span>`;
-                ampmHtml = ` <span style="font-size:0.4em;opacity:0.55">${ampm}</span>`;
+            // ---- 时间：结构变化才重建，否则只更新文本 ----
+            const structKey = `${use24 ? 1 : 0}|${tf.showSeconds ? 1 : 0}`;
+            if (structKey !== this._structKey || !this._parts || !this.clockEl.contains(this._parts.hh)) {
+                this._buildParts(tf);
+                this._structKey = structKey;
             }
-            if (tf.showSeconds) {
-                timeHtml += `<span class="colon clock-grad" style="animation:none;opacity:0.35;font-size:0.7em;">:</span><span class="clock-grad" style="font-size:0.55em;opacity:0.5;">${s}</span>`;
-            }
-            timeHtml += ampmHtml;
-            this.clockEl.innerHTML = timeHtml;
 
-            // 构建日期字符串
-            let dateStr;
-            switch (tf.dateFormat) {
-                case 'iso':
-                    dateStr = `${y}-${mo}-${d} ${wds}`;
-                    break;
-                case 'us':
-                    dateStr = `${mo}/${d}/${y} ${wds}`;
-                    break;
-                case 'uk':
-                    dateStr = `${d}/${mo}/${y} ${wds}`;
-                    break;
-                default:
-                    dateStr = `${y}年${mo}月${d}日 ${wd}`;
-            }
-            this.dateEl.textContent = dateStr;
+            const p = this._timeParts(now, use24);
+            this._parts.hh.textContent = p.hourStr;
+            this._parts.mm.textContent = p.m;
+            if (this._parts.ss) this._parts.ss.textContent = p.s;
+            if (this._parts.ampm) this._parts.ampm.textContent = p.ampm;
         },
 
         /** 强制立即更新（当设置改变时由外部调用） */
@@ -83,19 +130,11 @@
          */
         formatTime(date, force24h) {
             const tf = App.state.timeFormat || {};
-            const h24 = date.getHours();
-            const m = String(date.getMinutes()).padStart(2, '0');
-            const s = String(date.getSeconds()).padStart(2, '0');
             const use24 = force24h !== undefined ? !!force24h : tf.hour24 !== false;
-            let timeStr;
-            if (use24) {
-                timeStr = `${String(h24).padStart(2, '0')}:${m}`;
-            } else {
-                const h12 = h24 % 12 || 12;
-                const ampm = h24 >= 12 ? 'PM' : 'AM';
-                timeStr = `${String(h12).padStart(2, '0')}:${m} ${ampm}`;
-            }
-            if (tf.showSeconds !== false) timeStr += `:${s}`;
+            const p = this._timeParts(date, use24);
+            let timeStr = `${p.hourStr}:${p.m}`;
+            if (!use24) timeStr += ` ${p.ampm}`;
+            if (tf.showSeconds !== false) timeStr += `:${p.s}`;
             return timeStr;
         },
 

@@ -212,7 +212,7 @@ body {
 /* 壁纸 */
 #wallpaper-layer {
     position: fixed;
-    /* 参与视差时：四周外扩 --parallax-pad（= data-parallax-max）像素，
+    /* 参与视差时：四周外扩 --parallax-pad（= data-parallax-max * depth）像素，
        背景 cover 居中裁切，视觉不变，但平移最远时不会露出页面背景 */
     top: calc(-1 * var(--parallax-pad, 0px));
     left: calc(-1 * var(--parallax-pad, 0px));
@@ -660,6 +660,10 @@ body {
 }
 
 .history-clear-all {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
     border-top: 1px solid var(--history-clear-border);
     padding: 10px 18px;
     color: var(--text-tertiary);
@@ -772,9 +776,7 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
-.bookmark-item:hover .bookmark-icon-wrapper {
-    border-color: var(--accent-strong);
-}
+/* .bookmark-item:hover .bookmark-icon-wrapper 完整定义已合并至文末「美化增强」区（M8 去重） */
 
 .bookmark-icon-wrapper img {
     width: 28px;
@@ -845,11 +847,7 @@ body {
     font-size: 1.2rem;
 }
 
-.settings-fab:hover {
-    background: var(--glass-hover);
-    color: var(--text-primary);
-    transform: rotate(30deg) scale(1.05);
-}
+/* .settings-fab:hover 完整定义已合并至文末「美化增强」区（M8 去重） */
 
 /* 设置面板 */
 .settings-overlay {
@@ -919,10 +917,7 @@ body {
     font-size: 1.2rem;
 }
 
-.settings-close-btn:hover {
-    background: var(--btn-hover-bg);
-    color: var(--text-primary);
-}
+/* .settings-close-btn:hover 完整定义已合并至文末「美化增强」区（M8 去重） */
 
 .settings-panel-main {
     flex: 1;
@@ -1064,6 +1059,19 @@ body {
 .settings-row-label {
     font-size: 0.9rem;
     color: var(--text-primary);
+}
+
+/* 仅供读屏的隐藏文本（不改变视觉布局） */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 .about-value {
@@ -1362,6 +1370,40 @@ body {
     padding: 8px 0;
 }
 
+/* 上移/下移按钮：拖拽排序的触屏与键盘替代 */
+.item-move-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 0 0 auto;
+}
+
+.btn-move {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn-move:hover {
+    color: var(--accent);
+    border-color: var(--accent-strong);
+    background: var(--accent-dim);
+}
+
+.btn-move .svg-icon {
+    width: 13px;
+    height: 13px;
+}
+
 .btn-add-bookmark {
     display: flex;
     align-items: center;
@@ -1480,7 +1522,7 @@ body {
     transform: translateY(30px) scale(0.96);
     transition: transform 0.3s;
     border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-xl);
+    box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .world-clock-overlay.open .world-clock-panel {
@@ -1498,6 +1540,41 @@ body {
 .world-clock-header h2 {
     font-size: 1.2rem;
     color: var(--text-primary);
+}
+
+/* 头部右侧操作组：12/24 切换 + 关闭 */
+.wc-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wc-hour-btn {
+    height: 32px;
+    min-width: 48px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--glass-border);
+    background: var(--btn-bg);
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.wc-hour-btn:hover {
+    background: var(--btn-hover-bg);
+    color: var(--text-primary);
+    border-color: var(--accent-dim);
+}
+
+.wc-hour-btn[aria-pressed="true"] {
+    color: var(--accent);
+    border-color: var(--accent-strong);
+    background: var(--btn-primary-bg);
 }
 
 .world-clock-body {
@@ -1522,6 +1599,7 @@ body {
 }
 
 .timezone-item {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1529,6 +1607,30 @@ body {
     background: var(--settings-row-bg);
     border-radius: var(--radius-sm);
     border: 1px solid var(--glass-border);
+    transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.timezone-item:hover {
+    transform: translateY(-1px);
+    border-color: var(--accent-dim);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+
+/* 当前本地时区：强调边框 + 左侧光条 */
+.timezone-item.is-local {
+    border-color: var(--accent-strong);
+    box-shadow: 0 0 0 1px var(--accent-dim);
+}
+
+.timezone-item.is-local::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 14%;
+    bottom: 14%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
 }
 
 .tz-info {
@@ -1553,7 +1655,7 @@ body {
 
 .tz-time {
     font-size: 1.3rem;
-    font-weight: 300;
+    font-weight: 400;
     color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
 }
@@ -1563,38 +1665,99 @@ body {
     color: var(--text-tertiary);
 }
 
-/* Toast */
-.toast {
-    position: fixed;
-    bottom: 90px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 60;
-    padding: 10px 22px;
-    border-radius: 24px;
-    background: var(--toast-bg);
-    backdrop-filter: blur(16px);
-    color: var(--text-primary);
-    font-size: 0.85rem;
-    opacity: 0;
-    transition: opacity 0.3s;
-    pointer-events: none;
+/* 昼夜 / 时差 / 冬夏令时 小标签 */
+.tz-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 7px;
 }
+
+.tz-tag {
+    font-size: 0.68rem;
+    line-height: 1;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: var(--btn-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+}
+
+.tz-tag.tz-dn {
+    color: var(--text-secondary);
+}
+
+.tz-tag.tz-dst {
+    color: var(--accent-strong);
+    border-color: var(--accent-dim);
+}
+
+.tz-tag.tz-localtag {
+    color: var(--accent);
+    border-color: var(--accent-strong);
+    background: var(--btn-primary-bg);
+}
+
+/* 自定义时区的冬夏令时选项行 */
+.wc-dst-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.wc-dst-row[hidden] {
+    display: none;
+}
+
+.wc-dst-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.wc-dst-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-tertiary);
+}
+
+.wc-dst-field .settings-input {
+    flex: none;
+    width: 72px;
+    min-width: 60px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.wc-dst-field .settings-select {
+    min-width: 96px;
+    padding: 6px 28px 6px 10px;
+    font-size: 0.8rem;
+    background-position: right 8px center;
+}
+
+.wc-dst-field .settings-input:disabled,
+.wc-dst-field .settings-select:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Toast */
+/* .toast 完整定义已合并至文末「美化增强」区（M8 去重） */
 
 .toast.show {
     opacity: 1;
 }
 
-/* 拖拽相关样式 */
-.bookmark-edit-item.dragging {
-    opacity: 0.4;
-    border: 2px dashed var(--accent-strong);
-    border-radius: var(--radius-sm);
-}
-
-.bookmark-edit-item.drag-over {
-    border-top: 2px solid var(--accent);
-}
+/* 拖拽相关样式统一见上方 .drag-handle / .dragging / .drag-over（App.Sortable） */
 
 /* 自定义引擎列表 */
 .custom-engines-list {
@@ -1669,7 +1832,8 @@ body {
     height: 16px;
 }
 
-.custom-engine-item .drag-handle {
+/* 拖拽手柄 + 拖拽态（书签/自定义引擎共用，App.Sortable） */
+.drag-handle {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1682,24 +1846,26 @@ body {
     transition: color var(--transition-fast), background var(--transition-fast);
 }
 
-.custom-engine-item .drag-handle:hover {
+.drag-handle:hover {
     color: var(--accent);
     background: var(--btn-hover-bg);
 }
 
-.custom-engine-item .drag-handle:active {
+.drag-handle:active {
     cursor: grabbing;
 }
 
-.custom-engine-item .drag-handle .svg-icon {
+.drag-handle .svg-icon {
     width: 16px;
     height: 16px;
 }
 
+.bookmark-edit-item.dragging,
 .custom-engine-item.dragging {
     opacity: 0.4;
 }
 
+.bookmark-edit-item.drag-over,
 .custom-engine-item.drag-over {
     box-shadow: 0 -2px 0 var(--accent);
 }
@@ -2226,6 +2392,8 @@ body {
     outline-offset: 2px;
 }
 
+/* 仅撤销 outline：搜索框聚焦高光由 .search-wrapper:focus-within（6px 光环）
+   与 .settings-*:focus 各自的规则提供，input 本身不得带 box-shadow（矩形高光） */
 .search-wrapper:focus-within,
 .search-input:focus-visible,
 .settings-input:focus,
@@ -2287,6 +2455,7 @@ body {
 }
 
 .bookmark-item:hover .bookmark-icon-wrapper {
+    border-color: var(--accent-strong);
     transform: scale(1.08) translateY(-2px);
     box-shadow: var(--shadow-md), 0 0 24px var(--accent-dim);
     background: var(--accent-dim);
@@ -2356,6 +2525,8 @@ body {
 }
 
 .settings-close-btn:hover {
+    background: var(--btn-hover-bg);
+    color: var(--text-primary);
     transform: rotate(90deg);
 }
 
@@ -2378,13 +2549,28 @@ body {
 
 /* FAB 光晕 */
 .settings-fab:hover {
+    background: var(--glass-hover);
+    color: var(--text-primary);
+    transform: rotate(30deg) scale(1.05);
     box-shadow: var(--shadow-lg), 0 0 26px var(--accent-dim);
 }
 
 /* Toast 位移过渡 */
 .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
     transform: translateX(-50%) translateY(8px);
+    z-index: 60;
+    padding: 10px 22px;
+    border-radius: 24px;
+    background: var(--toast-bg);
+    backdrop-filter: blur(16px);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    opacity: 0;
     transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
 }
 
 .toast.show {
@@ -2408,8 +2594,71 @@ body {
         padding: 10px;
     }
 
+    /* 窄屏：侧栏改为顶部横向滚动的分类 chip 导航（不再整体隐藏） */
+    .settings-panel-main {
+        flex-direction: column;
+    }
+
     .settings-sidebar {
+        flex-direction: row;
+        width: auto;
+        padding: 10px;
+        gap: 6px;
+        border-right: none;
+        border-bottom: 1px solid var(--glass-border);
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-shrink: 0;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .settings-nav-item {
+        padding: 7px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--glass-border);
+        background: var(--btn-bg);
+        font-size: 0.82rem;
+        gap: 6px;
+    }
+
+    .settings-nav-item.active {
+        border-color: var(--accent-strong);
+        background: var(--btn-primary-bg);
+        color: var(--accent);
+    }
+
+    /* chip 态用边框/底色表示激活，隐藏侧栏式左侧指示条 */
+    .settings-nav-item::before {
         display: none;
+    }
+
+    .settings-nav-item .svg-icon {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* 窄屏：排序编辑行改为堆叠，输入框不再被挤没 */
+    .bookmark-edit-item,
+    .custom-engine-item {
+        flex-wrap: wrap;
+        row-gap: 6px;
+    }
+
+    .bookmark-edit-item .settings-input,
+    .custom-engine-item .settings-input {
+        flex-basis: 100% !important;
+        min-width: 0;
+    }
+
+    .bookmark-edit-item .item-move-btns,
+    .custom-engine-item .item-move-btns {
+        flex-direction: row;
+    }
+
+    .bookmark-edit-item .btn-icon-danger,
+    .custom-engine-item .btn-icon-danger {
+        margin-left: auto;
     }
 
     .settings-panel {
@@ -2450,4 +2699,85 @@ body {
     .weather-details {
         grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
     }
+}
+
+/* ========== 轻量 Dialog（L4，替换 confirm/prompt） ========== */
+.app-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    padding: 20px;
+}
+
+.app-dialog-overlay[hidden] {
+    display: none;
+}
+
+.app-dialog {
+    width: min(420px, 100%);
+    background: var(--bg-secondary, #fff);
+    color: var(--text-primary, #222);
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.app-dialog-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.app-dialog-msg {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-secondary, #555);
+    margin-bottom: 12px;
+}
+
+.app-dialog-input {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.app-dialog-textarea {
+    width: 100%;
+    margin-bottom: 12px;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.8rem;
+    resize: vertical;
+    background: var(--bg-primary, #fafafa);
+    color: var(--text-primary, #222);
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.15));
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.app-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* 世界时钟空状态（L7） */
+.wc-empty {
+    text-align: center;
+    color: var(--text-tertiary, #999);
+    font-size: 0.9rem;
+    padding: 28px 12px;
+}
+
+/* 壁纸预载淡入（L5） */
+#wallpaper-layer.wp-preload-fade {
+    animation: wp-fade-in 0.45s ease;
+}
+
+@keyframes wp-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }

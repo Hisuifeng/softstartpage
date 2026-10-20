@@ -1,6 +1,6 @@
-/**
+﻿/**
  * weather.js
- * 天气与雨效/雪效模块（适配新API结构）
+ * 天气与雨效/雪效模块
  * 挂载于 window.App.Weather
  */
 (function () {
@@ -18,6 +18,10 @@
         currentWeatherData: null,
         resizeTimer: null,
         isRefreshing: false,
+        // 轮询定时器 / 请求序号 / single-flight 共享 Promise（M12）
+        _pollTimer: null,
+        _reqSeq: 0,
+        _fetchPromise: null,
 
         // WMO 天气代码（icon 为 App.Utils.ICONS 中的扁平 SVG 图标名）
         WMO_CODES: {
@@ -57,13 +61,22 @@
         particles: [], animFrameId: null,
         // 雨/雪效全局透明度（0–1，设置面板 sp_rain_opacity）
         effectOpacity: 1,
-        // 雨效颜色（按主题区分，设置面板 sp_rain_colors）
-        rainColors: { dark: '#87ceeb', light: '#2a8fd4' },
+        // 雨效颜色（M13 单一事实来源：视图指向 state.rainColors，不再维护第二份）
+        get rainColors() {
+            const s = window.App.state;
+            if (!s.rainColors) s.rainColors = { dark: '#87ceeb', light: '#2a8fd4' };
+            return s.rainColors;
+        },
+        set rainColors(v) { window.App.state.rainColors = v; },
         // 天气图标缓存（Canvas 绘制用）
         weatherIcons: {},
         isDarkTheme: window.App.Theme ? App.Theme.isDark() : !window.matchMedia('(prefers-color-scheme: light)').matches,
 
         init(options = {}) {
+
+            if (this._inited) return; // M14 防重入：document/window 级监听只绑一次
+
+            this._inited = true;
             this.fabBtn = document.getElementById('weatherFab');
             this.fabIcon = document.getElementById('weatherFabIcon');
             this.fabText = document.getElementById('weatherFabText');
@@ -93,13 +106,14 @@
             });
 
             const state = window.App.state;
+            const reducedMotion = App.Utils.prefersReducedMotion ? App.Utils.prefersReducedMotion() : false;
             state.weatherEffectEnabled = options.weatherEffectEnabled !== undefined
                 ? options.weatherEffectEnabled
-                : App.Utils.load('sp_weather_effect', true);
+                : App.Utils.load('sp_weather_effect', !reducedMotion);
             this.effectOpacity = state.rainOpacity !== undefined
                 ? state.rainOpacity
                 : App.Utils.load('sp_rain_opacity', 1);
-            this.rainColors = state.rainColors || App.Utils.load('sp_rain_colors', { dark: '#87ceeb', light: '#2a8fd4' });
+            state.rainColors = state.rainColors || App.Utils.load('sp_rain_colors', { dark: '#87ceeb', light: '#2a8fd4' });
             state.customLat = App.Utils.load('sp_custom_lat', null);
             state.customLon = App.Utils.load('sp_custom_lon', null);
             // 天气数据源（uapi = uapis.cn，open-meteo = Open-Meteo/CMA）与 UAPI 定位参数
@@ -109,21 +123,53 @@
 
             this._bindEvents();
             this.updateWeatherFab();
-            setInterval(() => this.updateWeatherFab(), 1800000);
+            // 30 分钟轮询：离线时静默跳过；失败也不弹错（仅用户手动刷新才提示）
+            this._pollTimer = setInterval(() => {
+                if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+                this.updateWeatherFab(null, { silent: true });
+            }, 1800000);
         },
 
         getWeatherInfo(code) { return this.WMO_CODES[code] || { icon: 'unknown', desc: '未知' }; },
 
-        /** 将天气图标加载为 Canvas 图片对象（通过内联 data URI，本地可用） */
+        /**
+         * 「当地墙钟时间串」→ 毫秒数（按 UTC 解析，便于与 Date.now()+偏移 比较）
+         * Open-Meteo timezone=auto 与 UAPI 归一化后的 hourly.time 都是无时区后缀的
+         * 当地墙钟串（如 2026-10-20T14:00），不能用 new Date() 直接比较真实时间。
+         */
+        _wallClockToMs(t) {
+            if (!t) return NaN;
+            return Date.parse(String(t).replace(' ', 'T') + 'Z');
+        },
+
+        /** 墙钟时间串 → 当地日期字符串（跨时区安全，替代 toLocale* 系列） */
+        _fmtWallClock(t, withDate = false) {
+            const m = String(t || '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+            if (!m) return '';
+            return withDate
+                ? `${+m[2]}月${+m[3]}日 ${m[4]}:${m[5]}`
+                : `${m[4]}:${m[5]}`;
+        },
+
+        /** 数据集的「查询坐标时区」当前偏移（秒）；UAPI 已补 UTC+8，缺失时回退 0 */
+        _locOffsetSec(data) {
+            const sec = data && data.utc_offset_seconds;
+            return typeof sec === 'number' && isFinite(sec) ? sec : 0;
+        },
+
+        /** 将天气图标加载为 Canvas 图片对象（通过内联 data URI，本地可用）；复用同组 Image 仅换色重载 src（L2） */
         _loadWeatherIcons() {
             const iconNames = Object.values(this.WMO_CODES).map(w => w.icon)
                 .concat(['unknown']).filter((v, i, a) => a.indexOf(v) === i);
             const color = this.getThemeColors().textColor;
-            this.weatherIcons = {};
+            if (!this.weatherIcons) this.weatherIcons = {};
             iconNames.forEach(name => {
-                const img = new Image();
+                let img = this.weatherIcons[name];
+                if (!img) {
+                    img = new Image();
+                    this.weatherIcons[name] = img;
+                }
                 img.src = App.Utils.svgDataUri(name, color);
-                this.weatherIcons[name] = img;
             });
         },
         getThemeColors() {
@@ -162,13 +208,13 @@
             }
         },
 
-        // ==================== 天气 API (新接口) ====================
-        async getWeather(lat, lon, forceRefresh = false) {
+        // ==================== 天气 API ====================
+        async getWeather(lat, lon, forceRefresh = false, silent = false) {
             const cacheKey = `sp_weather_cache_${lat.toFixed(2)}_${lon.toFixed(2)}`;
             if (!forceRefresh) {
                 const cached = App.Utils.load(cacheKey, null);
                 if (cached && cached.timestamp && (Date.now() - cached.timestamp < 1800000)) {
-                    // 检查新数据是否包含 current 对象，否则视为旧缓存
+                    // 缓存结构校验，不合法则丢弃
                     if (cached.data?.current && cached.data?.daily?.temperature_2m_max) {
                         return cached.data;
                     } else {
@@ -190,7 +236,11 @@
                 await this._mergeUv(data, uvResp);
                 App.Utils.save(cacheKey, { data, timestamp: Date.now() });
                 return data;
-            } catch (e) { console.error(e); App.Utils.showToast('天气数据获取失败'); return null; }
+            } catch (e) {
+                console.error(e);
+                if (!silent) App.Utils.showToast('天气数据获取失败');
+                return null;
+            }
         },
 
         /**
@@ -220,13 +270,24 @@
          * 统一入口：按当前数据源取天气。
          * 'uapi' = uapis.cn（按 city/adcode 查询或 IP 自动定位）
          * 'open-meteo' = Open-Meteo CMA（按经纬度查询）
+         * single-flight：并发调用共享同一个进行中的请求（UAPI 有 4 QPS 限频）；
+         * silent = 静默模式，失败不弹 toast（轮询/后台刷新用）。
          */
-        async fetchWeather(forceRefresh = false) {
-            const state = window.App.state;
-            const source = state.weatherSource === 'open-meteo' ? 'open-meteo' : 'uapi';
-            if (source === 'uapi') return this._getWeatherUapi(forceRefresh);
-            const location = await this.getLocation(forceRefresh);
-            return this.getWeather(location.lat, location.lon, forceRefresh);
+        async fetchWeather(forceRefresh = false, silent = false) {
+            if (this._fetchPromise) return this._fetchPromise;
+            const p = (async () => {
+                const state = window.App.state;
+                const source = state.weatherSource === 'open-meteo' ? 'open-meteo' : 'uapi';
+                if (source === 'uapi') return this._getWeatherUapi(forceRefresh, silent);
+                const location = await this.getLocation(forceRefresh);
+                return this.getWeather(location.lat, location.lon, forceRefresh, silent);
+            })();
+            this._fetchPromise = p;
+            try {
+                return await p;
+            } finally {
+                if (this._fetchPromise === p) this._fetchPromise = null;
+            }
         },
 
         // ==================== UAPI（uapis.cn）数据源 ====================
@@ -236,7 +297,7 @@
          * 该接口有调用限制（4 QPS、建议 ≤40 次/分），故必须缓存 30 分钟再复用。
          * 文档：https://uapis.cn/docs/api-reference/get-misc-weather
          */
-        async _getWeatherUapi(forceRefresh = false) {
+        async _getWeatherUapi(forceRefresh = false, silent = false) {
             const state = window.App.state;
             const city = String(state.weatherCity || '').trim();
             const adcode = String(state.weatherAdcode || '').trim();
@@ -262,7 +323,7 @@
                 return data;
             } catch (e) {
                 console.error(e);
-                App.Utils.showToast(e?.friendly ? e.message : '天气数据获取失败');
+                if (!silent) App.Utils.showToast(e?.friendly ? e.message : '天气数据获取失败');
                 return null;
             }
         },
@@ -304,6 +365,10 @@
             return {
                 source: 'uapi',
                 todayDate,
+                // UAPI 为中国境内城市服务（adcode/city/IP 均为国内定位），
+                // 补上与 Open-Meteo 同名字段：中国标准时 UTC+8（无夏令时）。
+                // 图表「未来 48 小时」的起点比较与墙钟格式化都依赖它做时区换算。
+                utc_offset_seconds: 8 * 3600,
                 current: {
                     temperature_2m: raw.temperature ?? null,
                     weather_code: this._wmoFromText(raw.weather),
@@ -386,9 +451,15 @@
         },
 
         // ==================== 更新左下角按钮 ====================
-        /** @param {object|null} weatherData 已取到的数据（避免重复请求），缺省时自行拉取 */
-        async updateWeatherFab(weatherData = null) {
-            const data = weatherData || await this.fetchWeather();
+        /**
+         * @param {object|null} weatherData 已取到的数据（避免重复请求），缺省时自行拉取
+         * @param {{silent?: boolean}} [opts] silent = 静默拉取（轮询用，失败不弹 toast）
+         */
+        async updateWeatherFab(weatherData = null, opts = {}) {
+            // 请求序号：后发起的请求使先前仍在途的响应作废（防切换源/城市时旧数据覆盖新数据）
+            const seq = ++this._reqSeq;
+            const data = weatherData || await this.fetchWeather(false, !!opts.silent);
+            if (seq !== this._reqSeq) return null; // 已被更新的请求取代，丢弃过期响应
             if (!data || !data.current) return null;
             this.currentWeatherData = data;
 
@@ -410,6 +481,7 @@
         /** 数据源 / 定位参数变化后重新拉取（缓存键随参数变化，通常会真正发一次请求） */
         async handleSourceChange() {
             const data = await this.updateWeatherFab();
+            // seq 已过期（被更新的请求取代）或拉取失败时不重绘详情
             if (data && this.overlay?.classList.contains('open')) {
                 await this.renderWeatherDetail(data);
             }
@@ -550,11 +622,11 @@
                             <div class="weather-hero-icon">${App.Utils.svg(info.icon)}</div>
                             <div class="weather-hero-tempwrap">
                                 <div class="weather-hero-temp">${temp}<span class="unit">°</span></div>
-                                <div class="weather-hero-desc">${desc}</div>
+                                <div class="weather-hero-desc">${App.Utils.escapeHtml(String(desc ?? ''))}</div>
                             </div>
                         </div>
                         <div class="weather-hero-meta">
-                            <div class="weather-hero-city">${App.Utils.svg('location')}<span>${cityLabel}</span></div>
+                            <div class="weather-hero-city">${App.Utils.svg('location')}<span>${App.Utils.escapeHtml(String(cityLabel ?? ''))}</span></div>
                             <div class="weather-hero-stats">
                                 <div class="hero-stat"><span class="hero-stat-label">最高</span><span class="hero-stat-value">${maxTemp}°</span></div>
                                 <div class="hero-stat"><span class="hero-stat-label">最低</span><span class="hero-stat-value">${minTemp}°</span></div>
@@ -586,7 +658,7 @@
             box.hidden = false;
             const items = list.map(it => {
                 const title = [it.brief, it.advice].filter(Boolean).join(' · ');
-                return `<div class="weather-life-item"${title ? ` title="${App.Utils.escapeHtml(title)}"` : ''}>
+                return `<div class="weather-life-item"${title ? ` title="${App.Utils.escapeAttr(title)}"` : ''}>
                     <span class="weather-life-name">${App.Utils.escapeHtml(it.name)}</span>
                     <span class="weather-life-level">${App.Utils.escapeHtml(it.level)}</span>
                 </div>`;
@@ -621,7 +693,7 @@
             const ctx = this.chartCanvas.getContext('2d', { willReadFrequently: true });
             const containerWidth = this.chartContainer.clientWidth;
             const chartHeight = 240;
-            const dpr = window.devicePixelRatio || 1;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
             this.chartCanvas.width = containerWidth * dpr;
             this.chartCanvas.height = chartHeight * dpr;
@@ -635,12 +707,32 @@
             const precips = hourly.precipitation;
             const feels = hourly.apparent_temperature;
             const codes = hourly.weather_code;
-            const snowfalls = hourly.snowfall || []; // 新增降雪数据
+            const snowfalls = hourly.snowfall || []; // 降雪数据
+            const colors = this.getThemeColors();
 
-            const now = new Date();
-            const startIdx = times.findIndex(t => new Date(t) >= now);
+            // 「未来 48 小时」起点必须用「查询坐标时区的此刻」比较：
+            // hourly.time 是该坐标的当地墙钟串，new Date(t) 会按浏览器时区解析，
+            // 当浏览器时区 ≠ 坐标时区（境外城市/自定义经纬度）时会整体错位。
+            const locNowMs = Date.now() + this._locOffsetSec(weatherData) * 1000;
+            const startIdx = times.findIndex(t => this._wallClockToMs(t) >= locNowMs);
             const start = startIdx >= 0 ? startIdx : 0;
             const end = Math.min(start + 48, times.length);
+
+            // 边界保护：数据点不足 / 全部过期时不再继续绘制（无除零 NaN 与"过去 48 小时"误导图）
+            if (times.length === 0 || start >= times.length) {
+                ctx.clearRect(0, 0, containerWidth, chartHeight);
+                ctx.fillStyle = colors.bgColor;
+                ctx.fillRect(0, 0, containerWidth, chartHeight);
+                ctx.fillStyle = colors.textColor;
+                ctx.font = '13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(startIdx < 0 && times.length > 0
+                    ? '未来预报数据已过期，请点击刷新'
+                    : '暂无逐时预报数据', containerWidth / 2, chartHeight / 2);
+                this._chartData = null;
+                return;
+            }
+
             const sliceTimes = times.slice(start, end);
             let sliceTemps = temps.slice(start, end);
             let slicePrecips = precips.slice(start, end);
@@ -656,10 +748,11 @@
                 if (sliceSnowfalls[i] === null) sliceSnowfalls[i] = 0; // 填充
             }
 
-            const colors = this.getThemeColors();
             const padding = { top: 30, right: 20, bottom: 55, left: 55 };
             const chartW = containerWidth - padding.left - padding.right;
             const chartH = chartHeight - padding.top - padding.bottom;
+            // 单点数据时避免 idx/(n-1) 除零
+            const denom = Math.max(1, sliceTemps.length - 1);
 
             const tempMin = Math.min(...sliceTemps, ...sliceFeels);
             const tempMax = Math.max(...sliceTemps, ...sliceFeels);
@@ -690,7 +783,7 @@
             ctx.fillStyle = colors.precipColor;
             slicePrecips.forEach((p, idx) => {
                 if (p === 0) return;
-                const x = padding.left + (idx / (sliceTemps.length - 1)) * chartW;
+                const x = padding.left + (idx / denom) * chartW;
                 const barWidth = chartW / sliceTemps.length * 0.8;
                 const barHeight = (p / precipMax) * (chartH * 0.6);
                 ctx.fillRect(x - barWidth / 2, padding.top + chartH - barHeight, barWidth, barHeight);
@@ -700,7 +793,7 @@
             ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; // 半透明白色
             sliceSnowfalls.forEach((s, idx) => {
                 if (s === 0) return;
-                const x = padding.left + (idx / (sliceTemps.length - 1)) * chartW;
+                const x = padding.left + (idx / denom) * chartW;
                 const barWidth = chartW / sliceTemps.length * 0.7; // 稍窄，避免完全遮盖
                 const barHeight = (s / snowMax) * (chartH * 0.5); // 降雪高度上限略低
                 ctx.fillRect(x - barWidth / 2, padding.top + chartH - barHeight, barWidth, barHeight);
@@ -709,7 +802,7 @@
             // 温度折线
             ctx.beginPath(); ctx.strokeStyle = colors.tempColor; ctx.lineWidth = 2;
             sliceTemps.forEach((t, idx) => {
-                const x = padding.left + (idx / (sliceTemps.length - 1)) * chartW;
+                const x = padding.left + (idx / denom) * chartW;
                 const y = padding.top + chartH - ((t - tempMin) / tempRange) * chartH;
                 if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
             }); ctx.stroke();
@@ -717,7 +810,7 @@
             // 体感温度虚线
             ctx.beginPath(); ctx.strokeStyle = colors.feelColor; ctx.lineWidth = 1.8; ctx.setLineDash([4, 3]);
             sliceFeels.forEach((f, idx) => {
-                const x = padding.left + (idx / (sliceFeels.length - 1)) * chartW;
+                const x = padding.left + (idx / denom) * chartW;
                 const y = padding.top + chartH - ((f - tempMin) / tempRange) * chartH;
                 if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
             }); ctx.stroke(); ctx.setLineDash([]);
@@ -725,9 +818,8 @@
             // X轴时间标签与天气图标
             ctx.fillStyle = colors.textColor;
             for (let i = 0; i < sliceTimes.length; i += 4) {
-                const x = padding.left + (i / (sliceTimes.length - 1)) * chartW;
-                const time = new Date(sliceTimes[i]);
-                const timeStr = time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                const x = padding.left + (i / denom) * chartW;
+                const timeStr = this._fmtWallClock(sliceTimes[i]);
                 ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
                 ctx.fillText(timeStr, x, padding.top + chartH + 16);
                 const code = sliceCodes[i] || 0; const info = this.getWeatherInfo(code);
@@ -740,25 +832,27 @@
             }
 
             const imageData = ctx.getImageData(0, 0, this.chartCanvas.width, this.chartCanvas.height);
-            this.chartCanvas._weatherData = {
+            this._chartData = {
                 imageData, times: sliceTimes, temps: sliceTemps, precip: slicePrecips,
                 feels: sliceFeels, codes: sliceCodes, snowfalls: sliceSnowfalls, // 保存降雪
                 padding, chartW, chartH, tempMin, tempRange, colors,
                 pointsCount: sliceTemps.length, dpr, containerWidth,
-                precipMax, snowMax // 保存最大值便于可能使用
+                precipMax, snowMax
             };
 
-            if (!this.chartCanvas._eventsBound) {
-                this.chartCanvas._eventsBound = true;
-                this.chartCanvas.addEventListener('mousemove', (e) => this._onChartMouseMove(e));
-                this.chartCanvas.addEventListener('mouseleave', () => this._onChartMouseLeave());
+            if (!this._chartEventsBound) {
+                this._chartEventsBound = true;
+                // Pointer Events 统一鼠标与触屏（触点释放时浏览器会派发 pointerleave）
+                this.chartCanvas.addEventListener('pointermove', (e) => this._onChartMouseMove(e));
+                this.chartCanvas.addEventListener('pointerdown', (e) => this._onChartMouseMove(e));
+                this.chartCanvas.addEventListener('pointerleave', () => this._onChartMouseLeave());
             }
         },
 
         _onChartMouseMove(e) {
             const canvas = this.chartCanvas;
-            if (!canvas || !canvas._weatherData) return;
-            const data = canvas._weatherData;
+            const data = this._chartData;
+            if (!canvas || !data) return;
             if (!data.imageData) return;
 
             const container = this.chartContainer;
@@ -772,7 +866,7 @@
             const mouseX = e.clientX - rect.left;
             const relativeX = mouseX - data.padding.left;
             const ratio = Math.max(0, Math.min(1, relativeX / data.chartW));
-            const idx = Math.round(ratio * (data.pointsCount - 1));
+            const idx = Math.round(ratio * Math.max(1, data.pointsCount - 1));
             if (idx < 0 || idx >= data.times.length) {
                 if (this.chartTooltip) this.chartTooltip.style.display = 'none';
                 return;
@@ -782,7 +876,7 @@
             ctx.putImageData(data.imageData, 0, 0);
             ctx.setTransform(data.dpr, 0, 0, data.dpr, 0, 0);
 
-            const x = data.padding.left + (idx / (data.pointsCount - 1)) * data.chartW;
+            const x = data.padding.left + (idx / Math.max(1, data.pointsCount - 1)) * data.chartW;
             const yTemp = data.padding.top + data.chartH - ((data.temps[idx] - data.tempMin) / data.tempRange) * data.chartH;
 
             // 垂直指示线
@@ -804,10 +898,9 @@
             ctx.lineWidth = 1;
             ctx.stroke();
 
-            // Tooltip
+            // Tooltip（墙钟串本地直显，不走浏览器时区换算）
             if (!this.chartTooltip) return;
-            const t = new Date(data.times[idx]);
-            const timeStr = t.toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' });
+            const timeStr = this._fmtWallClock(data.times[idx], true);
             const temp = data.temps[idx] ?? '--';
             const feel = data.feels[idx] ?? '--';
             const precip = data.precip[idx] ?? 0;
@@ -839,8 +932,8 @@
 
         _onChartMouseLeave() {
             const canvas = this.chartCanvas;
-            if (!canvas || !canvas._weatherData) return;
-            const data = canvas._weatherData;
+            const data = this._chartData;
+            if (!canvas || !data) return;
             if (data.imageData) {
                 const ctx = canvas.getContext('2d', { willReadFrequently: true });
                 ctx.putImageData(data.imageData, 0, 0);
@@ -848,17 +941,21 @@
             if (this.chartTooltip) this.chartTooltip.style.display = 'none';
         },
 
-        // ==================== 特效代码（保持不变） ====================
+        // ==================== 雨 / 雪特效 ====================
         _initEffectCanvas() {
             if (!this.effectCanvas) return;
-            this.effectCanvas.width = window.innerWidth;
-            this.effectCanvas.height = window.innerHeight;
+            // 与 particles 一致做 dpr 缩放，高分屏雨丝/雪花不发虚
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            this.effectCanvas.width = window.innerWidth * dpr;
+            this.effectCanvas.height = window.innerHeight * dpr;
+            this.effectCanvas.style.width = window.innerWidth + 'px';
+            this.effectCanvas.style.height = window.innerHeight + 'px';
+            this.effectCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
         },
 
         _onResizeEffect() {
             if (this.effectCanvas) {
-                this.effectCanvas.width = window.innerWidth;
-                this.effectCanvas.height = window.innerHeight;
+                this._initEffectCanvas();
             }
             if (this.currentEffectType && this.currentEffectIntensity > 0 && window.App.state.weatherEffectEnabled) {
                 this.startEffect(this.currentEffectType, this.currentEffectIntensity);
@@ -870,35 +967,42 @@
                 this.stopEffect();
                 return;
             }
+            const sameParams = this.currentEffectType === type
+                && this.currentEffectIntensity === intensity
+                && this.particles.length > 0;
             this.currentEffectType = type;
             this.currentEffectIntensity = intensity;
 
-            this.particles = [];
-            const count = Math.floor(intensity * 12);
-            const canvasWidth = this.effectCanvas.width;
-            const canvasHeight = this.effectCanvas.height;
+            // 同类型同强度时保留现有粒子（刷新天气 / 重开开关不再闪跳重置雨幕）
+            if (!sameParams) {
+                this.particles = [];
+                const count = Math.floor(intensity * 12);
+                // 粒子坐标使用 CSS 像素（画布经 setTransform 缩放到 dpr）
+                const canvasWidth = window.innerWidth;
+                const canvasHeight = window.innerHeight;
 
-            for (let i = 0; i < count; i++) {
-                if (type === 'rain') {
-                    this.particles.push({
-                        type: 'rain',
-                        x: Math.random() * canvasWidth,
-                        y: Math.random() * -canvasHeight,
-                        length: Math.random() * 10 + 5 * (intensity / 5),
-                        speed: Math.random() * 8 + 5 * (intensity / 3),
-                        opacity: Math.random() * 0.35 + 0.55
-                    });
-                } else { // snow
-                    this.particles.push({
-                        type: 'snow',
-                        x: Math.random() * canvasWidth,
-                        y: Math.random() * -canvasHeight,
-                        radius: Math.random() * 3 + 1,
-                        speed: Math.random() * 1.5 + 0.5,
-                        swing: Math.random() * 2 - 1,
-                        swingSpeed: Math.random() * 0.02,
-                        opacity: Math.random() * 0.5 + 0.3
-                    });
+                for (let i = 0; i < count; i++) {
+                    if (type === 'rain') {
+                        this.particles.push({
+                            type: 'rain',
+                            x: Math.random() * canvasWidth,
+                            y: Math.random() * -canvasHeight,
+                            length: Math.random() * 10 + 5 * (intensity / 5),
+                            speed: Math.random() * 8 + 5 * (intensity / 3),
+                            opacity: Math.random() * 0.35 + 0.55
+                        });
+                    } else { // snow
+                        this.particles.push({
+                            type: 'snow',
+                            x: Math.random() * canvasWidth,
+                            y: Math.random() * -canvasHeight,
+                            radius: Math.random() * 3 + 1,
+                            speed: Math.random() * 1.5 + 0.5,
+                            swing: Math.random() * 2 - 1,
+                            swingSpeed: Math.random() * 0.02,
+                            opacity: Math.random() * 0.5 + 0.3
+                        });
+                    }
                 }
             }
 
@@ -921,7 +1025,7 @@
                 this.animFrameId = null;
             }
             if (this.effectCtx && this.effectCanvas) {
-                this.effectCtx.clearRect(0, 0, this.effectCanvas.width, this.effectCanvas.height);
+                this.effectCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
             }
             this.particles = [];
             this.currentEffectType = null;
@@ -931,21 +1035,26 @@
         _drawEffectFrame() {
             if (!this.effectCtx || !this.effectCanvas) return;
             const ctx = this.effectCtx;
-            const canvasWidth = this.effectCanvas.width;
-            const canvasHeight = this.effectCanvas.height;
+            const canvasWidth = window.innerWidth;
+            const canvasHeight = window.innerHeight;
             const type = this.currentEffectType;
 
             ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
+            // 颜色解析每帧只做一次，不放进粒子循环
+            let rainRgb = null;
+            if (type === 'rain') {
+                const hex = this.isDarkTheme ? this.rainColors.dark : this.rainColors.light;
+                rainRgb = this._hexToRgb(hex) || (this.isDarkTheme ? '135,206,235' : '42,143,212');
+            }
+
             this.particles.forEach(p => {
                 if (type === 'rain') {
                     // 雨效颜色按主题区分（暗色/亮色），默认天蓝，可在设置中修改
-                    const hex = this.isDarkTheme ? this.rainColors.dark : this.rainColors.light;
-                    const rgb = this._hexToRgb(hex) || (this.isDarkTheme ? '135,206,235' : '42,143,212');
                     ctx.beginPath();
                     ctx.moveTo(p.x, p.y);
                     ctx.lineTo(p.x - 1, p.y + p.length);
-                    ctx.strokeStyle = 'rgba(' + rgb + ',' + (p.opacity * this.effectOpacity) + ')';
+                    ctx.strokeStyle = 'rgba(' + rainRgb + ',' + (p.opacity * this.effectOpacity) + ')';
                     ctx.lineWidth = 1;
                     ctx.stroke();
                     p.y += p.speed;
@@ -988,14 +1097,13 @@
             window.App.state.rainOpacity = this.effectOpacity;
         },
 
-        /** 设置雨效颜色（按主题，实时按帧生效） */
+        /** 设置雨效颜色（按主题，实时按帧生效；经 setter 写入 state.rainColors） */
         setRainColors(colors) {
             if (!colors) return;
             this.rainColors = {
                 dark: colors.dark || this.rainColors.dark,
                 light: colors.light || this.rainColors.light
             };
-            window.App.state.rainColors = this.rainColors;
         },
 
         /** 将 #rgb / #rrggbb 转为 "r,g,b" 字符串，供 rgba() 拼装 */
@@ -1009,16 +1117,23 @@
         },
 
         // ==================== 事件绑定 ====================
+        /** 关闭天气详情面板（与 Modal 焦点还原保持一致） */
+        _closePanel() {
+            if (window.App.Modal) App.Modal.close(this.overlay);
+            this.overlay?.classList.remove('open');
+        },
+
         _bindEvents() {
             this.fabBtn?.addEventListener('click', async () => {
                 if (!this.overlay) return;
                 this.overlay.classList.add('open');
+                if (window.App.Modal) App.Modal.open(this.overlay);
                 await this.renderWeatherDetail();
             });
             const closeWeatherBtn = document.getElementById('closeWeatherBtn');
-            closeWeatherBtn?.addEventListener('click', () => this.overlay?.classList.remove('open'));
+            closeWeatherBtn?.addEventListener('click', () => this._closePanel());
             if (this.refreshBtn) this.refreshBtn.addEventListener('click', () => this.forceRefreshWeather());
-            this.overlay?.addEventListener('click', (e) => { if (e.target === this.overlay) this.overlay.classList.remove('open'); });
+            this.overlay?.addEventListener('click', (e) => { if (e.target === this.overlay) this._closePanel(); });
             window.addEventListener('resize', () => {
                 clearTimeout(this.resizeTimer);
                 this.resizeTimer = setTimeout(() => {

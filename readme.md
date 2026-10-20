@@ -1,4 +1,4 @@
-# 轻-soft 起始页 v2 (SoftStartpage v2)
+﻿# 轻-soft 起始页 v2 (SoftStartpage v2)
 
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![pure-frontend](https://img.shields.io/badge/纯前端-zero--build-brightgreen)
@@ -52,6 +52,7 @@
 ### 外观与主题
 
 - **明暗主题**：浅色 / 深色 / 跟随系统三种模式，一键切换，配色平滑过渡。
+- **自定义强调色**：在设置里挑一个喜欢的颜色，按钮、焦点光环、联想高亮等一并换色（亮/暗主题共用），可一键恢复主题默认。
 - **动态背景**：“雨，静静的下起来了” —— 雨、雪等天气特效，可调节透明度与颜色。
 - **粒子背景**：星点连线的粒子动效（默认关闭）。
 - **视差背景**：鼠标移动时背景产生轻微视差，画面更有层次感（可关闭）。
@@ -60,16 +61,16 @@
 ### 时间
 
 - **时钟**：支持 24 / 12 小时制、显示秒、多种日期格式。
-- **世界时钟**：添加并编辑多个时区时钟，预设常用城市，也支持手动输入 `UTC±HH:MM`。
+- **世界时钟**：添加并编辑多个时区时钟，预设常用城市（IANA 时区，自动跟随夏令时），也支持手动输入 `UTC±HH:MM`（可选配冬/夏令时）或 IANA 时区名（如 `Asia/Shanghai`，自动跟随夏令时）。
 
 ### 搜索
 
-- **多引擎搜索**：内置 Google / Bing / Baidu / DuckDuckGo，可添加自定义搜索引擎（支持**拖拽排序**），默认引擎可在设置面板中逐项**隐藏**（隐藏后不出现在切换器、不占用数字快捷键，至少保留一个），支持 `Ctrl/Alt/Shift + 数字` 快捷切换。
+- **多引擎搜索**：内置 Google / Bing / Baidu / DuckDuckGo，可添加自定义搜索引擎（支持**拖拽排序**），默认引擎可在设置面板中逐项**隐藏**（隐藏后不出现在切换器、不占用数字快捷键，至少保留一个），支持 `Ctrl/Alt + 数字` 快捷切换（另可选 Ctrl+Shift 或仅数字键）。
 - **搜索联想**：接入搜索引擎联想接口（可切换备用 API），支持搜索历史与一键清除。
 
 ### 书签与壁纸
 
-- **书签管理**：拖拽排序，自定义名称 / 网址 / 图标，在设置面板中增删改；可选择“页面内跳转”或“新标签页打开”；书签为空时首页显示「+ 添加书签」，点击直达设置；支持把书签**导出到剪贴板**、或**从剪贴板导入**（导入按网址去重，不会覆盖现有书签）。
+- **书签管理**：拖拽排序，自定义名称 / 网址 / 图标，在设置面板中增删改；未填图标时自动获取网站图标（默认先请求站点 `/favicon.ico`，失败回退二级域名，再失败显示首字母；可切换 Google s2，也可关闭自动获取，手动图标不受影响）；可选择“页面内跳转”或“新标签页打开”；书签为空时首页显示「+ 添加书签」，点击直达设置；支持把书签**导出到剪贴板**、或**从剪贴板导入**（导入按网址去重，不会覆盖现有书签）。
 - **壁纸**：
   - 支持网络图片 URL，或上传本地图片；
   - 未设置壁纸时，可随机使用仓库内置壁纸（分暗色 / 亮色两套）；
@@ -90,7 +91,9 @@
 
 ### 设置
 
-- **设置面板**：左侧分类导航（外观主题 / 时间显示 / 动态背景 / 壁纸 / 搜索与引擎 / 书签管理 / 位置与天气 / 快捷键 / 关于），右侧为对应设置项，支持点击定位，定位到的分类会高亮闪烁提示。
+- **设置面板**：左侧分类导航（外观主题 / 时间显示 / 动态背景 / 壁纸 / 搜索与引擎 / 书签管理 / 数据管理 / 位置与天气 / 快捷键 / 关于），右侧为对应设置项，支持点击定位，定位到的分类会高亮闪烁提示。
+- **配置档案**：设置 → 数据管理，可保存多套「书签 + 自定义引擎 + 当前引擎」（如工作/学习/私人），一键切换。
+- **设置备份**：全部设置（含书签、引擎、世界时钟与配置档案）可**导出为 JSON 到剪贴板**，换设备**从剪贴板导入**（白名单清洗后覆盖并刷新；不含搜索历史与天气缓存）。
 - **恢复默认**：不会清除你的书签和自定义引擎；书签与自定义引擎另有独立的“清空”按钮。
 
 ## 常见说明
@@ -107,21 +110,22 @@
 
 ### 项目结构
 
-纯前端、零构建、零依赖，源码分模块组织：
-
 ```text
 index.html          页面结构
 style.css           全部样式（CSS 变量 + 明暗主题）
 js/
   utils.js          ICONS / svg() / 存储 / Toast 等公共工具
+  modal.js          统一弹窗无障碍辅助（焦点陷阱 / Escape / 焦点归还）
   theme.js          明暗主题模块（App.Theme）
-  particles.js      雨雪粒子背景
+  particles.js      星点连线粒子背景（雨雪特效在 weather.js）
   parallax.js       视差背景
   clock.js          时钟
   wallpaper.js      壁纸（URL / 本地 / 仓库随机 / 固定）
   engine.js         搜索引擎
   search.js         搜索框与联想
   bookmarks.js      书签
+  sortable.js       通用列表排序（拖拽手柄 + ↑↓，书签/自定义引擎共用）
+  data.js           设置导入/导出与配置档案
   settings.js       设置面板
   worldclock.js     世界时钟
   weather.js        天气与雨雪特效
@@ -130,7 +134,7 @@ build.js            零依赖构建脚本（产出 dist/）
 package.json        仅含 npm scripts，无第三方依赖
 _headers            Cloudflare Pages 缓存策略（发布根目录也需要）
 .github/workflows/  GitHub Actions 构建与部署
-dist/               构建产物（已 gitignore）
+dist/               构建产物（已 gitignore，在action后构建的产物）
 ```
 
 ### 构建与部署
@@ -143,7 +147,7 @@ node build.js        # 或 npm run build
 
 产物在 `dist/`，与源码相比有三处优化：
 
-- **JS 合并**：13 个 `defer` 分片按顺序拼成 `assets/bundle.<hash>.js`（13 次请求 → 1 次）。
+- **JS 合并**：16 个 `defer` 分片按顺序拼成 `assets/bundle.<hash>.js`（16 次请求 → 1 次）。
 - **壁纸转 WebP**：`img/wallpaper/**` 由 JPG 压为 WebP（最长边 1920、q80，实测 52 MB → 约 1.7 MB，单张 ≤ 320 KB），并让代码引用 `.webp`；原图另存到 `img/wallpaper/*/orig/`，仅供设置里的「使用高清原图」开关按需加载（不开启不会产生任何请求）。若本机装了 `sharp` / ImageMagick / `webp` 则启用，否则回退拷贝原图（功能不受影响）。
 - **内容 hash + 长缓存**：`index.html` 引用改为 `assets/` 下带 hash 的文件名，并写入 `dist/_headers`（`/assets/*` 一年 immutable、`/img/*` 7 天）。
 
@@ -153,7 +157,7 @@ node build.js        # 或 npm run build
 - **Cloudflare Pages**：推荐同样走工作流，配置 `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` 两个仓库 Secrets 后会自动 `pages deploy dist --project-name=softstartpage`。若沿用 Dashboard 的 Git 集成，请把 Build command 设为 `node build.js`、Output directory 设为 `dist`（构建镜像若无 WebP 工具会自动回退原图）。
 - 若继续让两边直接发布仓库根目录，`_headers` 仍会修正缓存，但不会享受 JS 合并与壁纸压缩的收益。
 
-> 本地只做开发预览时无需构建：`index.html` 直接引用 13 个源码分片与 `style.css`。
+> 本地只做开发预览时无需构建：`index.html` 直接引用 14 个源码分片与 `style.css`。
 
 ### 常用 API
 
@@ -171,9 +175,14 @@ node build.js        # 或 npm run build
 | 键 | 含义 |
 | --- | --- |
 | `sp_theme` | 明暗主题模式（`auto` / `light` / `dark`，默认跟随系统） |
+| `sp_accent_color` | 自定义强调色（`#rrggbb`；`null`/缺失 = 主题默认） |
+| `sp_profiles` | 配置档案列表（每项含书签 + 自定义引擎 + 当前引擎） |
+| `sp_active_profile` | 当前档案 id |
 | `sp_time` | 时间格式（24 小时、显示秒、日期格式） |
 | `sp_bookmarks` | 书签数组 |
 | `sp_bookmark_inpage` | 书签页面内跳转（默认开启，关闭则新标签页打开） |
+| `sp_favicon_source` | 书签自动 favicon 来源（`direct` 默认，站点 `/favicon.ico`；或 `google` s2） |
+| `sp_favicon_enabled` | 自动获取网站图标开关（默认开启；关闭则仅显示首字母，手动图标不受影响） |
 | `sp_history` | 搜索历史 |
 | `sp_suggestions` | 搜索联想开关 |
 | `sp_fallback` | 联想备用 API（baidu/bing/google） |
@@ -191,7 +200,11 @@ node build.js        # 或 npm run build
 | `sp_particles` | 粒子背景开关（默认关闭） |
 | `sp_parallax` | 视差背景开关 |
 | `sp_default_wallpaper` | 未设置壁纸时启用默认随机壁纸（关闭时固定壁纸也一并隐藏，但固定状态保留） |
+| `sp_hd_wallpaper` | 壁纸使用高清原图（默认 `false`） |
 | `sp_theme_wallpaper_count` | 回退方案：元数据缺失时默认壁纸的探测张数（默认 8） |
+| `sp_weather_source` | 天气数据源（`uapi` / `open-meteo`，默认 `uapi`） |
+| `sp_weather_city` / `sp_weather_adcode` | UAPI 定位参数（留空按 IP 自动定位） |
+| `sp_storage_version` | 存储 schema 版本（供未来迁移） |
 
 ### 自定义仓库壁纸
 
@@ -200,11 +213,11 @@ node build.js        # 或 npm run build
 ```text
 img/wallpaper/black/              暗色主题壁纸
 img/wallpaper/light/              亮色主题壁纸
-img/wallpaper/wppaper_about.json  壁纸数量与推荐者信息
+img/wallpaper/wallpaper_about.json  壁纸数量与推荐者信息
 ```
 
 - 直接替换或新增图片即可，请使用 `.jpg` 并按 `wallpaper0.jpg`、`wallpaper1.jpg`… 从 0 开始连续命名。
-- **数量与推荐者由 `img/wallpaper/wppaper_about.json` 声明**，无需改代码：
+- **数量与推荐者由 `img/wallpaper/wallpaper_about.json` 声明**，无需改代码：
 
 ```json
 {
@@ -240,10 +253,10 @@ img/wallpaper/wppaper_about.json  壁纸数量与推荐者信息
 ### 调试
 
 ```js
-// 手动激活雨效（强度参考 WMO_RAIN_MAP：小雨 23、中雨 45、大雨 8）
+// 手动激活雨效（强度参考 WMO_RAIN_MAP：小雨 61→4、中雨 63→6、大雨 65→8、雷暴 95→9）
 App.state.weatherEffectEnabled = true;
 App.Weather.startEffect('rain', 4);
-// 雪效同理
+// 雪效同理（WMO_SNOW_MAP：小雪 71→3、中雪 73→5、大雪 75→8）
 App.Weather.startEffect('snow', 4);
 // 停止
 App.Weather.stopEffect();

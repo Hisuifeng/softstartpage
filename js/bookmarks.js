@@ -1,4 +1,4 @@
-/**
+﻿/**
  * bookmarks.js
  * 书签管理模块（支持拖拽排序）
  * 挂载于 window.App.Bookmarks
@@ -14,15 +14,13 @@
         // 设置面板中的编辑列表容器
         editList: null,
 
-        // 当前拖拽状态
-        draggedItem: null,
-        draggedIndex: -1,
-
         /**
          * 初始化书签模块
          * @param {Array} [initialBookmarks] 书签数组，若不传则从 localStorage 读取
          */
         init(initialBookmarks) {
+            if (this._inited) return; // M14 防重入：document/window 级监听只绑一次
+            this._inited = true;
             this.mainContainer = document.getElementById('bookmarksSection');
             this.editList = document.getElementById('bookmarkEditList');
 
@@ -37,6 +35,56 @@
 
             // 渲染主页书签
             this.renderMain();
+        },
+
+        /**
+         * 由书签网址推导自动 favicon URL（M16-v）
+         * 来源由 state.faviconSource 决定：
+         * · direct（默认）——站点自身 {origin}/favicon.ico，任何网站均可
+         * · google —— Google s2（国内可能不可用）
+         * direct 加载失败时再经 autoIconFallbackUrl 回退二级域名，仍失败回退首字母
+         * 仅对 http/https 且有主机名的网址生效
+         * @param {string} url
+         * @param {string} [source] 覆盖来源（测试用；默认读 state.faviconSource）
+         * @returns {string} 空串表示不适用
+         */
+        autoIconUrl(url, source) {
+            const s = String(url || '').trim();
+            if (!/^https?:\/\//i.test(s)) return '';
+            const src = String(source || window.App.state?.faviconSource || 'direct');
+            try {
+                const u = new URL(s);
+                if (!u.hostname) return '';
+                if (src === 'google') {
+                    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(u.hostname)}&sz=64`;
+                }
+                // direct（默认）：任意站点域名后接 /favicon.ico
+                return `${u.protocol}//${u.hostname}/favicon.ico`;
+            } catch (e) {
+                return '';
+            }
+        },
+
+        /**
+         * 自动 favicon 的备用地址（direct 源失败时的二级域名尝试）
+         * @param {string} url
+         * @param {string} [source]
+         * @returns {string} 无备用返回空串
+         */
+        autoIconFallbackUrl(url, source) {
+            const s = String(url || '').trim();
+            if (!/^https?:\/\//i.test(s)) return '';
+            const src = String(source || window.App.state?.faviconSource || 'direct');
+            if (src !== 'direct') return ''; // google s2 本身按域名查询，无二级回退
+            try {
+                const u = new URL(s);
+                const parts = u.hostname.split('.');
+                if (parts.length < 3) return ''; // example.com 无更上一级
+                const parent = parts.slice(-2).join('.');
+                return `${u.protocol}//${parent}/favicon.ico`;
+            } catch (e) {
+                return '';
+            }
         },
 
         /** 渲染主页书签区域 */
@@ -68,12 +116,20 @@
                 const name = String(bm.name || '');
                 const url = String(bm.url || '');
                 const iconUrl = String(bm.iconUrl || '');
-                const href = url ? App.Utils.escapeHtml(url) : '#';
-                const img = iconUrl
-                    ? `<img src="${App.Utils.escapeHtml(iconUrl)}" alt="" onerror="this.style.display='none'" onload="this.style.display='block';this.previousElementSibling.style.opacity='0'">`
+                const href = url && App.Utils.isSafeUrl(url) ? App.Utils.escapeAttr(url) : '#';
+                // 图标优先级：手动 iconUrl > 自动 favicon（可关闭；direct 失败回退二级域名）> 首字母
+                const autoEnabled = window.App.state.faviconEnabled !== false;
+                const autoUrl = autoEnabled ? this.autoIconUrl(url) : '';
+                const autoFallback = autoEnabled && !iconUrl ? this.autoIconFallbackUrl(url) : '';
+                const src = iconUrl || autoUrl;
+                const fallbackAttr = (autoFallback && App.Utils.isSafeUrl(autoFallback) && !iconUrl)
+                    ? ` data-fallback="${App.Utils.escapeAttr(autoFallback)}"` : '';
+                // L6：不再使用内联 onerror/onload（CSP 兼容），由 renderMain 后统一 addEventListener
+                const img = src && App.Utils.isSafeUrl(src)
+                    ? `<img src="${App.Utils.escapeAttr(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"${fallbackAttr}>`
                     : '';
                 return `
-                <a class="bookmark-item" href="${href}"${targetAttr} title="${App.Utils.escapeHtml(name)}">
+                <a class="bookmark-item" href="${href}"${targetAttr} title="${App.Utils.escapeAttr(name)}">
                     <div class="bookmark-icon-wrapper">
                         <span class="bookmark-fallback">${App.Utils.escapeHtml(App.Utils.getFallbackChar(name))}</span>
                         ${img}
@@ -82,28 +138,76 @@
                 </a>
             `;
             }).join('');
+            this._bindIconEvents();
+        },
+
+        /** L6：图标加载/回退用容器级事件委托（无内联 onerror/onload，CSP 兼容） */
+        _bindIconEvents() {
+            if (!this.mainContainer || this._iconEventsBound) return;
+            this._iconEventsBound = true;
+            this.mainContainer.addEventListener('load', (e) => {
+                const img = e.target;
+                if (!(img instanceof HTMLImageElement) || !img.closest('.bookmark-icon-wrapper')) return;
+                img.style.display = 'block';
+                const fallback = img.previousElementSibling;
+                if (fallback) fallback.style.opacity = '0';
+            }, true);
+            this.mainContainer.addEventListener('error', (e) => {
+                const img = e.target;
+                if (!(img instanceof HTMLImageElement) || !img.closest('.bookmark-icon-wrapper')) return;
+                // direct 一级失败 → 尝试二级域名 → 仍失败隐藏（显示首字母）
+                if (img.dataset.fallback && !img.dataset.ftried) {
+                    img.dataset.ftried = '1';
+                    img.src = img.dataset.fallback;
+                    return;
+                }
+                img.style.display = 'none';
+            }, true);
         },
 
         /**
-         * 在设置面板中渲染可编辑的书签列表（包含拖拽功能）
+         * 在设置面板中渲染可编辑的书签列表（手柄拖拽 + ↑↓，App.Sortable 复用）
          * 由 settings.js 调用
          */
         renderEditor() {
             if (!this.editList) return;
             const bookmarks = window.App.state.bookmarks;
             this.editList.innerHTML = bookmarks.map((bm, idx) => `
-                <div class="bookmark-edit-item" draggable="true" data-index="${idx}">
-                    <input class="settings-input" placeholder="名称" value="${App.Utils.escapeHtml(bm.name||'')}" data-field="name" style="flex:1;">
-                    <input class="settings-input" placeholder="网址" value="${App.Utils.escapeHtml(bm.url||'')}" data-field="url" style="flex:2;">
-                    <input class="settings-input" placeholder="图标(可选)" value="${App.Utils.escapeHtml(bm.iconUrl||'')}" data-field="iconUrl" style="flex:1;">
+                <div class="bookmark-edit-item" data-id="${App.Utils.escapeAttr(bm.id || '')}" data-index="${idx}">
+                    <span class="drag-handle" draggable="true" title="拖拽排序" aria-label="拖拽排序">${App.Utils.svg('grip')}</span>
+                    <div class="item-move-btns">
+                        <button type="button" class="btn-move" data-move="up" data-idx="${idx}" title="上移" aria-label="上移该书签">${App.Utils.svg('arrowUp')}</button>
+                        <button type="button" class="btn-move" data-move="down" data-idx="${idx}" title="下移" aria-label="下移该书签">${App.Utils.svg('arrowDown')}</button>
+                    </div>
+                    <input class="settings-input" placeholder="名称" value="${App.Utils.escapeAttr(bm.name||'')}" data-field="name" style="flex:1;">
+                    <input class="settings-input" placeholder="网址" value="${App.Utils.escapeAttr(bm.url||'')}" data-field="url" style="flex:2;">
+                    <input class="settings-input" placeholder="图标(可选)" value="${App.Utils.escapeAttr(bm.iconUrl||'')}" data-field="iconUrl" style="flex:1;">
                     <button class="btn-icon-danger" data-idx="${idx}" title="删除">${App.Utils.svg('close')}</button>
                 </div>
             `).join('');
 
-            // 绑定拖拽事件
-            this._bindDragEvents();
+            // 通用排序（拖拽手柄 + ↑↓）；输入框内容在 save() 时由 collectEdited 统一收集，
+            // 此处只需按 DOM 顺序同步 state 数组（与自定义引擎同一套 Sortable）
+            if (window.App.Sortable) {
+                App.Sortable.bind(this.editList, {
+                    itemSelector: '.bookmark-edit-item',
+                    onReorder: (fromIdx, toIdx, orderedItems) => this._reorderState(orderedItems)
+                });
+            }
             // 绑定删除按钮事件
             this._bindDeleteEvents();
+        },
+
+        /** 按编辑器 DOM 顺序重排 state.bookmarks（不读输入框，保留未保存编辑） */
+        _reorderState(orderedItems) {
+            const arr = window.App.state.bookmarks || [];
+            const byId = new Map(arr.map(bm => [String(bm.id), bm]));
+            const ordered = [];
+            orderedItems.forEach(item => {
+                const found = byId.get(String(item.dataset.id));
+                if (found) ordered.push(found);
+            });
+            if (ordered.length === arr.length) window.App.state.bookmarks = ordered;
         },
 
         /** 从编辑器中收集当前书签数组（按 DOM 顺序） */
@@ -111,17 +215,21 @@
             if (!this.editList) return [];
             const items = this.editList.querySelectorAll('.bookmark-edit-item');
             const newBookmarks = [];
+            let unsafe = 0;
             items.forEach(item => {
                 const inputs = item.querySelectorAll('input');
                 if (inputs.length >= 2) {
+                    const url = inputs[1].value.trim();
+                    if (url && !App.Utils.isSafeUrl(url)) { unsafe++; return; }
                     newBookmarks.push({
                         id: App.Utils.genId(), // 每次收集生成新 ID，避免冲突
                         name: inputs[0].value.trim(),
-                        url: inputs[1].value.trim(),
+                        url,
                         iconUrl: inputs.length > 2 ? inputs[2].value.trim() : ''
                     });
                 }
             });
+            if (unsafe > 0) App.Utils.showToast(`已跳过 ${unsafe} 条含不安全网址的书签`);
             return newBookmarks.length ? newBookmarks : [{ id: '1', name: '', url: '', iconUrl: '' }];
         },
 
@@ -188,102 +296,23 @@
             else if (data && Array.isArray(data.bookmarks)) arr = data.bookmarks;
             if (!arr) return null;
 
+            let rejected = 0;
             const cleaned = arr.slice(0, 1000).map(bm => ({
                 id: App.Utils.genId(),
                 name: String((bm && bm.name) || '').trim().slice(0, 200),
                 url: String((bm && bm.url) || '').trim().slice(0, 2000),
                 iconUrl: String((bm && bm.iconUrl) || '').trim().slice(0, 2000)
-            })).filter(bm => bm.url);
+            })).filter(bm => {
+                if (!bm.url) return false;
+                if (!App.Utils.isSafeUrl(bm.url)) { rejected++; return false; }
+                if (bm.iconUrl && !App.Utils.isSafeUrl(bm.iconUrl)) { bm.iconUrl = ''; }
+                return true;
+            });
+            if (rejected > 0) App.Utils.showToast(`已跳过 ${rejected} 条不安全网址`);
             return cleaned;
         },
 
-        // ---------- 拖拽实现 ----------
-        _bindDragEvents() {
-            if (!this.editList) return;
-            const items = this.editList.querySelectorAll('.bookmark-edit-item');
-
-            items.forEach(item => {
-                item.addEventListener('dragstart', (e) => this._onDragStart(e));
-                item.addEventListener('dragover', (e) => this._onDragOver(e));
-                item.addEventListener('dragleave', (e) => this._onDragLeave(e));
-                item.addEventListener('drop', (e) => this._onDrop(e));
-                item.addEventListener('dragend', (e) => this._onDragEnd(e));
-            });
-        },
-
-        _onDragStart(e) {
-            const item = e.target.closest('.bookmark-edit-item');
-            if (!item) return;
-            this.draggedItem = item;
-            this.draggedIndex = parseInt(item.dataset.index);
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', this.draggedIndex);
-            item.classList.add('dragging');
-        },
-
-        _onDragOver(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            const target = e.target.closest('.bookmark-edit-item');
-            if (target && target !== this.draggedItem) {
-                target.classList.add('drag-over');
-            }
-        },
-
-        _onDragLeave(e) {
-            const target = e.target.closest('.bookmark-edit-item');
-            if (target) {
-                target.classList.remove('drag-over');
-            }
-        },
-
-        _onDrop(e) {
-            e.preventDefault();
-            const target = e.target.closest('.bookmark-edit-item');
-            if (!target || !this.draggedItem || target === this.draggedItem) return;
-
-            const parent = this.editList;
-            const targetIndex = parseInt(target.dataset.index);
-            const fromIndex = this.draggedIndex;
-
-            // 在 DOM 中移动节点
-            if (fromIndex < targetIndex) {
-                parent.insertBefore(this.draggedItem, target.nextSibling);
-            } else {
-                parent.insertBefore(this.draggedItem, target);
-            }
-
-            // 更新书签数组顺序（DOM 中拖拽项落在 target 之后 → 数组插入索引即 targetIndex）
-            const movedItem = window.App.state.bookmarks.splice(fromIndex, 1)[0];
-            window.App.state.bookmarks.splice(targetIndex, 0, movedItem);
-
-            // 重新分配所有 data-index 属性
-            const allItems = parent.querySelectorAll('.bookmark-edit-item');
-            allItems.forEach((item, idx) => {
-                item.dataset.index = idx;
-                // 同步更新删除按钮的 data-idx 属性
-                const delBtn = item.querySelector('.btn-icon-danger');
-                if (delBtn) delBtn.dataset.idx = idx;
-            });
-
-            // 清理拖拽样式
-            this._clearDragStyles();
-            this.draggedItem = null;
-            this.draggedIndex = -1;
-        },
-
-        _onDragEnd() {
-            this._clearDragStyles();
-            this.draggedItem = null;
-            this.draggedIndex = -1;
-        },
-
-        _clearDragStyles() {
-            if (!this.editList) return;
-            this.editList.querySelectorAll('.bookmark-edit-item').forEach(item => {
-                item.classList.remove('dragging', 'drag-over');
-            });
-        },
+        // ---------- 排序（拖拽/↑↓）已统一收敛到 App.Sortable（js/sortable.js） ----------
 
         /** 绑定删除按钮事件 */
         _bindDeleteEvents() {

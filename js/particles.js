@@ -1,4 +1,4 @@
-/**
+﻿/**
  * particles.js
  * 粒子背景动画模块
  * 挂载于 window.App.Particles
@@ -6,6 +6,24 @@
 (function () {
     // 确保全局 App 命名空间存在
     window.App = window.App || {};
+
+    // 主题色表（M8 DRY：初始 colors 与 updateColors 共用同一来源，不再复制两份）
+    const THEME_PALETTE = {
+        light: {
+            line: 'rgba(80,100,140,0.25)',
+            glowStart: 'rgba(120,140,180,0.9)',
+            glowMid: 'rgba(100,120,160,0.4)',
+            glowEnd: 'rgba(80,100,140,0)',
+            core: 'rgba(60,80,120,0.55)'
+        },
+        dark: {
+            line: 'rgba(160,190,225,0.28)',
+            glowStart: 'rgba(200,215,240,0.9)',
+            glowMid: 'rgba(170,195,225,0.5)',
+            glowEnd: 'rgba(140,170,210,0)',
+            core: 'rgba(215,225,245,0.55)'
+        }
+    };
 
     const Particles = {
         // 内部状态
@@ -15,19 +33,16 @@
         mouseX: -1000,
         mouseY: -1000,
         animFrame: null,
+        _resizeTimer: null,
         // 是否允许显示粒子动画（由设置面板开关控制）
         enabled: false,
-        // 主题颜色
-        colors: {
-            line: 'rgba(160,190,225,0.28)',
-            glowStart: 'rgba(200,215,240,0.9)',
-            glowMid: 'rgba(170,195,225,0.5)',
-            glowEnd: 'rgba(140,170,210,0)',
-            core: 'rgba(215,225,245,0.55)'
-        },
+        // 主题颜色（默认暗色，init 时按实际主题刷新）
+        colors: { ...THEME_PALETTE.dark },
 
         /** 初始化粒子画布及动画 */
         init() {
+            if (this._inited) return; // M14 防重入：document/window 级监听只绑一次
+            this._inited = true;
             this.canvas = document.getElementById('particle-canvas');
             if (!this.canvas) {
                 console.warn('未找到粒子画布元素，跳过粒子背景');
@@ -90,31 +105,19 @@
             document.addEventListener('touchend', handleLeave);
 
             window.addEventListener('resize', () => {
-                this.resize();
-                this.createParticles();
+                // 150ms 防抖：拖动窗口边缘时不反复重建粒子数组
+                clearTimeout(this._resizeTimer);
+                this._resizeTimer = setTimeout(() => {
+                    this.resize();
+                    this.createParticles();
+                }, 150);
             });
         },
 
         /** 根据主题更新粒子颜色 */
         updateColors() {
             const isLight = window.App.Theme ? !App.Theme.isDark() : window.matchMedia('(prefers-color-scheme: light)').matches;
-            if (isLight) {
-                this.colors = {
-                    line: 'rgba(80,100,140,0.25)',
-                    glowStart: 'rgba(120,140,180,0.9)',
-                    glowMid: 'rgba(100,120,160,0.4)',
-                    glowEnd: 'rgba(80,100,140,0)',
-                    core: 'rgba(60,80,120,0.55)'
-                };
-            } else {
-                this.colors = {
-                    line: 'rgba(160,190,225,0.28)',
-                    glowStart: 'rgba(200,215,240,0.9)',
-                    glowMid: 'rgba(170,195,225,0.5)',
-                    glowEnd: 'rgba(140,170,210,0)',
-                    core: 'rgba(215,225,245,0.55)'
-                };
-            }
+            this.colors = { ...(isLight ? THEME_PALETTE.light : THEME_PALETTE.dark) };
         },
 
         /** 调整画布尺寸 */

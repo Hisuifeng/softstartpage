@@ -10,15 +10,23 @@
     const Utils = {
         /**
          * 从 localStorage 加载数据，若不存在则返回默认值
+         * 解析失败时备份原值到 sp_corrupt_* 并移除损坏键，避免静默丢数据
          * @param {string} key
          * @param {*} def 默认值
          * @returns {*}
          */
         load(key, def) {
+            let raw = null;
             try {
-                const val = localStorage.getItem(key);
-                return val ? JSON.parse(val) : def;
-            } catch {
+                raw = localStorage.getItem(key);
+                if (raw === null || raw === undefined || raw === '') return def;
+                return JSON.parse(raw);
+            } catch (e) {
+                console.warn('[storage] 解析失败，已备份并移除：', key, e);
+                try {
+                    if (raw !== null) localStorage.setItem(`sp_corrupt_${key}_${Date.now()}`, raw);
+                    localStorage.removeItem(key);
+                } catch (e2) { /* 备份失败不阻塞 */ }
                 return def;
             }
         },
@@ -37,6 +45,34 @@
         },
 
         /**
+         * 启动时清理过期的缓存键，防止换城市/换坐标后旧缓存残留撑爆 5MB 配额
+         * 覆盖：sp_weather_cache_*（30 分钟有效，保留 24h 供回访复用）、sp_location_cache（24h）
+         * @param {number} [maxAgeMs=24h]
+         * @returns {number} 清理的键数量
+         */
+        purgeExpiredCaches(maxAgeMs = 86400000) {
+            const prefixes = ['sp_weather_cache_', 'sp_location_cache'];
+            const now = Date.now();
+            const doomed = [];
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (!k || !prefixes.some(p => k.startsWith(p))) continue;
+                    try {
+                        const v = JSON.parse(localStorage.getItem(k) || '');
+                        const ts = v && v.timestamp;
+                        if (!ts || typeof ts !== 'number' || now - ts > maxAgeMs) doomed.push(k);
+                    } catch (e) {
+                        doomed.push(k); // 结构损坏的缓存直接清掉
+                    }
+                }
+                doomed.forEach(k => localStorage.removeItem(k));
+            } catch (e) { /* 遍历失败不阻塞启动 */ }
+            if (doomed.length) console.info(`[storage] 已清理 ${doomed.length} 个过期缓存键`);
+            return doomed.length;
+        },
+
+        /**
          * 转义 HTML 特殊字符，防止 XSS
          * @param {string} str
          * @returns {string}
@@ -48,11 +84,60 @@
         },
 
         /**
+         * 转义 HTML 属性上下文的特殊字符（含引号），防止属性注入型 XSS
+         * escapeHtml 基于 textContent→innerHTML，不会转义引号，属性插值必须用本函数
+         * @param {string} str
+         * @returns {string}
+         */
+        escapeAttr(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        },
+
+        /**
+         * 判断 URL 是否为安全协议（书签 / 引擎 / 链接白名单）
+         * 放行：http、https、mailto、ftp、ftps、file、tel 及相对路径 / 锚点；拒绝 javascript:、data:、vbscript: 等
+         * @param {string} url
+         * @returns {boolean}
+         */
+        isSafeUrl(url) {
+            if (typeof url !== 'string') return false;
+            const s = url.trim();
+            if (!s) return false;
+            // 相对路径 / 锚点 / 协议相对地址
+            if (/^(?:[/?#]|\/\/)/.test(s)) return true;
+            const m = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(s);
+            if (!m) return false; // 无协议头且非相对路径（如 "example.com x"）按不安全处理
+            return ['http', 'https', 'mailto', 'ftp', 'ftps', 'file', 'tel', 'magnet'].includes(m[1].toLowerCase());
+        },
+
+        /**
          * 生成唯一 ID
          * @returns {string}
          */
         genId() {
-            return 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+            const c = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+                ? crypto.randomUUID()
+                : Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+            return 'id_' + c;
+        },
+
+        /**
+         * 系统是否开启「减少动态效果」（prefers-reduced-motion）
+         * @returns {boolean}
+         */
+        prefersReducedMotion() {
+            try {
+                return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+                    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            } catch (e) {
+                return false;
+            }
         },
 
         /**
@@ -65,6 +150,8 @@
             return /[\u4e00-\u9fff]/.test(c) ? c : c.toUpperCase();
         },
 
+        _toastTimer: null,
+
         /**
          * 显示 Toast 提示
          * @param {string} msg
@@ -74,15 +161,15 @@
             if (!toast) return;
             toast.textContent = msg;
             toast.classList.add('show');
-            clearTimeout(window.__toastTimer);
-            window.__toastTimer = setTimeout(() => {
+            clearTimeout(this._toastTimer);
+            this._toastTimer = setTimeout(() => {
                 toast.classList.remove('show');
             }, 2000);
         },
 
         // ==================== 扁平 SVG 图标 ====================
         // 内联注入，不依赖外部文件，本地 file:// 打开即可使用
-        // 源文件见 svg/ 文件夹（内容与下方保持一致）
+        // 图标以 path 字符串内联在 ICONS 表中（无独立 svg/ 目录）
         ICONS: {
             close: '<path d="M18 6 6 18M6 6l12 12"/>',
             plus: '<path d="M12 5v14M5 12h14"/>',
@@ -103,6 +190,7 @@
             droplet: '<path d="M12 3s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11z"/>',
             snowflake: '<path d="M12 2v20M4.2 7l15.6 10M4.2 17l15.6-10"/><path d="M8 4.5 12 6l4-1.5M8 19.5l4-1.5 4 1.5M3.8 9.5l3.2 2-3.2 2M20.2 9.5l-3.2 2 3.2 2"/>',
             sun: '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.7 4.7l1.7 1.7M17.6 17.6l1.7 1.7M4.7 19.3l1.7-1.7M17.6 6.4l1.7-1.7"/>',
+            moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
             cloud: '<path d="M6.5 17.5a4 4 0 0 1-.6-7.9 5.6 5.6 0 0 1 10.3-1.6A3.9 3.9 0 0 1 18 17.5H6.5z"/>',
             fog: '<path d="M6.5 14.5a3.8 3.8 0 0 1-.5-7.4 5.4 5.4 0 0 1 9.9-1.5 3.9 3.9 0 0 1 2.1 7.2A3.6 3.6 0 0 1 16 14.5H6.5z"/><path d="M3.5 17.5h17M6 20.5h12"/>',
             drizzle: '<path d="M6.5 16.5a4 4 0 0 1-.6-7.9 5.6 5.6 0 0 1 10.3-1.6A3.9 3.9 0 0 1 18 16.5H6.5z"/><path d="M8.8 18.5v2M12 18.5v2M15.2 18.5v2"/>',
@@ -115,7 +203,9 @@
             info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
             eye: '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>',
             eyeOff: '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="m1 1 22 22"/>',
-            grip: '<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>'
+            grip: '<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
+            arrowUp: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+            arrowDown: '<path d="M12 5v14M19 12l-7 7-7-7"/>'
         },
 
         /**
@@ -137,7 +227,8 @@
         svgDataUri(name, color = '#9aa0a6') {
             const inner = this.ICONS[name] || this.ICONS.unknown;
             const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
-            return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+            return 'data:image/svg+xml;base64,' + btoa(encodeURIComponent(svg).replace(/%([0-9A-F]{2})/g,
+                (_, hex) => String.fromCharCode(parseInt(hex, 16))));
         },
 
         /**

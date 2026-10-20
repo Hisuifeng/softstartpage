@@ -1,4 +1,4 @@
-/**
+﻿/**
  * engine.js
  * 搜索引擎管理模块
  * 挂载于 window.App.Engine
@@ -6,6 +6,7 @@
 (function () {
     // 确保全局 App 命名空间存在
     window.App = window.App || {};
+    if (!window.App.state) window.App.state = {};
 
     const Engine = {
         // 默认引擎配置
@@ -16,14 +17,21 @@
             duckduckgo: { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=', home: 'https://duckduckgo.com', api: null }
         },
 
-        // 自定义引擎列表
-        customEngines: [],
+        // M13 单一事实来源：以下三者都是 App.state 的视图，模块不再维护第二份副本
+        get customEngines() {
+            if (!Array.isArray(window.App.state.customEngines)) window.App.state.customEngines = [];
+            return window.App.state.customEngines;
+        },
+        set customEngines(v) { window.App.state.customEngines = Array.isArray(v) ? v : []; },
 
-        // 已隐藏的默认引擎 key 列表
-        hiddenEngines: [],
+        get hiddenEngines() {
+            if (!Array.isArray(window.App.state.hiddenEngines)) window.App.state.hiddenEngines = [];
+            return window.App.state.hiddenEngines;
+        },
+        set hiddenEngines(v) { window.App.state.hiddenEngines = Array.isArray(v) ? v : []; },
 
-        // 当前选中的引擎 key
-        currentKey: 'google',
+        get currentKey() { return window.App.state.currentEngineKey || 'google'; },
+        set currentKey(v) { window.App.state.currentEngineKey = v; },
 
         // 引擎按钮容器
         container: null,
@@ -34,38 +42,25 @@
          * @param {Array} [initialCustom] 初始自定义引擎数组
          */
         init(initialKey, initialCustom) {
+            if (this._inited) return; // M14 防重入：document/window 级监听只绑一次
+            this._inited = true;
             this.container = document.getElementById('engineSwitcher');
             if (!this.container) {
                 console.warn('未找到引擎切换容器，跳过引擎模块');
                 return;
             }
 
-            // 从 localStorage 或参数恢复状态
-            if (initialKey) {
-                this.currentKey = initialKey;
-            } else {
-                this.currentKey = App.Utils.load('sp_engine', 'google');
-            }
-
-            if (initialCustom) {
-                this.customEngines = initialCustom;
-            } else {
-                this.customEngines = App.Utils.load('sp_custom_engines', []);
-            }
+            // 从参数或 localStorage 恢复（写入 state 即完成初始化）
+            this.currentKey = initialKey || App.Utils.load('sp_engine', 'google');
+            this.customEngines = initialCustom || App.Utils.load('sp_custom_engines', []);
 
             // 恢复已隐藏的默认引擎
-            const initialHidden = window.App.state && Array.isArray(window.App.state.hiddenEngines)
+            const initialHidden = Array.isArray(window.App.state.hiddenEngines)
                 ? window.App.state.hiddenEngines
                 : App.Utils.load('sp_hidden_engines', []);
             this.hiddenEngines = Array.isArray(initialHidden)
                 ? initialHidden.filter(k => Object.prototype.hasOwnProperty.call(this.defaultEngines, k))
                 : [];
-
-            // 将当前引擎 key 写入全局状态
-            if (!window.App.state) window.App.state = {};
-            window.App.state.currentEngineKey = this.currentKey;
-            window.App.state.customEngines = this.customEngines;
-            window.App.state.hiddenEngines = this.hiddenEngines;
 
             this.render();
             this._bindEvents();
@@ -99,8 +94,7 @@
         switchTo(key) {
             const all = this.getAll();
             if (!all[key]) return;
-            this.currentKey = key;
-            window.App.state.currentEngineKey = key;
+            this.currentKey = key; // 经 setter 写入 state（单一事实来源）
             App.Utils.save('sp_engine', key);
             this.render();
 
@@ -115,7 +109,7 @@
             if (!this.container) return;
             const all = this.getAll();
             this.container.innerHTML = Object.entries(all).map(([key, engine]) => `
-                <button class="engine-btn ${key === this.currentKey ? 'active' : ''}" data-engine="${key}">
+                <button class="engine-btn ${key === this.currentKey ? 'active' : ''}" data-engine="${App.Utils.escapeAttr(key)}">
                     ${App.Utils.escapeHtml(engine.name)}
                 </button>
             `).join('');
@@ -128,22 +122,26 @@
          */
         buildSearchUrl(query) {
             const engine = this.getCurrent();
-            if (engine.url.includes('{q}')) {
-                return engine.url.replace(/\{q\}/g, query);
+            // 兜底：历史数据中的引擎 URL 若含危险协议，回退到默认安全模板
+            const template = App.Utils.isSafeUrl(String(engine.url || '').replace(/\{q\}/g, 'x'))
+                ? engine.url
+                : 'https://www.google.com/search?q=';
+            if (template.includes('{q}')) {
+                return template.replace(/\{q\}/g, query);
             }
-            return engine.url + query;
+            return template + query;
         },
 
         /** 获取主页 URL */
         getHomeUrl() {
             const engine = this.getCurrent();
-            return engine.home || 'https://www.google.com';
+            const home = engine.home || '';
+            return App.Utils.isSafeUrl(home) ? home : 'https://www.google.com';
         },
 
         /** 设置自定义引擎列表并保存 */
         setCustom(list) {
-            this.customEngines = list;
-            window.App.state.customEngines = list;
+            this.customEngines = list; // 经 setter 写入 state
             App.Utils.save('sp_custom_engines', list);
             // 如果当前引擎被删除，自动切到第一个可用引擎
             const all = this.getAll();
@@ -158,8 +156,7 @@
         setHiddenKeys(keys) {
             const valid = Array.from(new Set(Array.isArray(keys) ? keys : []))
                 .filter(k => Object.prototype.hasOwnProperty.call(this.defaultEngines, k));
-            this.hiddenEngines = valid;
-            window.App.state.hiddenEngines = valid;
+            this.hiddenEngines = valid; // 经 setter 写入 state
             App.Utils.save('sp_hidden_engines', valid);
             // 如果当前引擎被隐藏，自动切到第一个可见引擎
             const all = this.getAll();
@@ -214,7 +211,8 @@
 
             // 快捷键由 main.js 统一处理，这里也可以预留方法
             document.addEventListener('keydown', (e) => {
-                const modifier = window.App.state?.modifierKey || 'ctrl';
+                if (e.repeat || e.defaultPrevented) return;
+                const modifier = window.App.state?.modifierKey || 'ctrlshift';
                 const all = this.getAll();
                 const keys = Object.keys(all);
                 const num = parseInt(e.key);
@@ -224,10 +222,10 @@
                 const isInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
 
                 let shouldSwitch = false;
-                if (modifier === 'ctrl' && e.ctrlKey) shouldSwitch = true;
-                else if (modifier === 'alt' && e.altKey) shouldSwitch = true;
-                else if (modifier === 'shift' && e.shiftKey) shouldSwitch = true;
-                else if (modifier === 'none' && !isInputFocused && !e.ctrlKey && !e.altKey && !e.metaKey) shouldSwitch = true;
+                if (modifier === 'ctrl' && e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey) shouldSwitch = true;
+                else if (modifier === 'ctrlshift' && e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey) shouldSwitch = true;
+                else if (modifier === 'alt' && e.altKey && !e.ctrlKey && !e.metaKey) shouldSwitch = true;
+                else if (modifier === 'none' && !isInputFocused && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) shouldSwitch = true;
 
                 if (shouldSwitch) {
                     e.preventDefault();

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * wallpaper.js
  * 壁纸模块
  * 挂载于 window.App.Wallpaper
@@ -6,6 +6,7 @@
 (function () {
     // 确保全局 App 命名空间存在
     window.App = window.App || {};
+    if (!window.App.state) window.App.state = {};
 
     const REPO_WP_EXT = 'jpg';
 
@@ -19,16 +20,17 @@
         hintBtn: null,
         hintLabel: null,
 
-        // 当前壁纸状态
-        wallpaper: null,
+        // 当前壁纸状态（M13 单一事实来源：视图指向 state.wallpaper，其他模块可直接读取）
+        get wallpaper() { return window.App.state.wallpaper; },
+        set wallpaper(v) { window.App.state.wallpaper = v; },
 
         // 当前展示的仓库默认壁纸 URL（用于“固定该壁纸”）
         _currentDefaultUrl: null,
 
-        // 各主题默认壁纸列表缓存（静态托管下通过 HEAD 探测 img/wallpaper/{black|light}/）
+        // 各主题当前展示的默认壁纸 URL 缓存
         _defaults: { black: null, light: null },
 
-        // 壁纸元数据（img/wallpaper/wppaper_about.json）：数量 + 推荐者信息
+        // 壁纸元数据（img/wallpaper/wallpaper_about.json）：数量 + 推荐者信息
         _about: null,
         _aboutPromise: null,
 
@@ -59,17 +61,15 @@
         },
 
         /**
-         * 读取壁纸元数据 img/wallpaper/wppaper_about.json（只请求一次，结果缓存）。
-         * 该文件提供每主题的壁纸张数（black_num / light_num）与推荐者（*_about）。
-         * 使用 cache:'no-cache'：仍走 HTTP 缓存，但每次先向服务器校验（未变返回 304），
-         * 既保留缓存又能在 JSON 更新后拿到最新内容；仅作用于本文件，不影响其它资源。
-         * 失败（文件缺失 / file:// 跨域）返回 null，调用方回退到旧的 HEAD 探测。
+         * 读取壁纸元数据 img/wallpaper/wallpaper_about.json（只请求一次并缓存）。
+         * 提供每主题的壁纸张数（black_num / light_num）与推荐者（*_about）。
+         * 失败（文件缺失 / file:// 跨域）返回 null，调用方回退到 _probeRandomWallpaper。
          * @returns {Promise<object|null>}
          */
         _loadAbout() {
             if (this._about) return Promise.resolve(this._about);
             if (this._aboutPromise) return this._aboutPromise;
-            this._aboutPromise = fetch('img/wallpaper/wppaper_about.json', { cache: 'no-cache' })
+            this._aboutPromise = fetch('img/wallpaper/wallpaper_about.json', { cache: 'no-cache' })
                 .then(res => (res.ok ? res.json() : null))
                 .then(json => {
                     if (json && typeof json === 'object') this._about = json;
@@ -106,15 +106,8 @@
 
         /**
          * 随机挑选当前主题目录下的一张默认壁纸。
-         *
-         * 【关键改动】不再写死数量上限（旧版默认 8，索引 0–7），也无需逐个
-         * HEAD 探测：改为读取 img/wallpaper/wppaper_about.json 里声明的
-         * black_num / light_num，在 [0, count) 中随机取一个索引直接返回。
-         *
-         *   · GitHub Pages / Cloudflare Pages：该 JSON 随仓库发布，数量即真实
-         *     壁纸数，直接命中；不存在“猜错范围”“SPA 兜底页被误判为壁纸”问题。
-         *   · JSON 读取失败时回退 _probeRandomWallpaper（旧的 HEAD 探测）。
-         *
+         * 读取元数据声明的数量，在 [0, count) 中随机取一个索引直接返回；
+         * 元数据不可用时回退 _probeRandomWallpaper。
          * @param {string} dir 'light' | 'black'
          * @returns {Promise<string|null>} 壁纸 URL；取不到返回 null
          */
@@ -129,10 +122,8 @@
         },
 
         /**
-         * 回退方案：元数据不可用时，随机索引发【一次】HEAD 请求并校验
-         * “响应的 Content-Type 以 image/ 开头”才算命中（避免 SPA 兜底页
-         * 的 200 + text/html 被误判为壁纸）。
-         *
+         * 元数据不可用时的回退：随机索引发 HEAD 请求，校验响应 Content-Type
+         * 以 image/ 开头才算命中（避免 SPA 兜底页的 200 + text/html 被误判）。
          * @param {string} dir 'light' | 'black'
          * @returns {Promise<string|null>} 壁纸 URL；探测不到返回 null
          */
@@ -153,12 +144,42 @@
             return null;
         },
 
+        /**
+         * 预载成功后再替换背景（L5：消除网络未就绪期间的纯色闪断，淡入过渡）
+         * @param {string} cssUrl 已经过 _resolveUrl/_sanitizeCssUrl 的 URL 片段
+         */
+        _setBackgroundPreloaded(cssUrl) {
+            if (!this.layer) return;
+            if (!cssUrl) {
+                this.layer.style.backgroundImage = 'none';
+                return;
+            }
+            const img = new Image();
+            img.onload = () => {
+                // 探测期间用户可能已切换别的壁纸
+                if (this._preloadToken !== img) return;
+                this.layer.style.backgroundImage = `url('${cssUrl}')`;
+                this.layer.classList.remove('hidden', 'wp-preload-fade');
+                void this.layer.offsetWidth; // 强制重排以重新触发动画
+                this.layer.classList.add('wp-preload-fade');
+            };
+            img.onerror = () => {
+                if (this._preloadToken !== img) return;
+                this.layer.style.backgroundImage = 'none';
+                this.layer.classList.add('hidden');
+                this._updateHint();
+            };
+            this._preloadToken = img;
+            img.src = cssUrl;
+        },
+
         /** 未设置壁纸时：随机选用当前主题的真实默认壁纸（只发一次请求） */
         _applyDefaultForTheme() {
             if (!this.layer) return;
             const dir = this._themeDir();
             const hide = () => {
                 this._currentDefaultUrl = null;
+                this._preloadToken = null; // 作废进行中的预载
                 this.layer.style.backgroundImage = 'none';
                 this.layer.classList.add('hidden');
                 this._updateHint();
@@ -167,8 +188,7 @@
             const render = (url) => {
                 if (!url) { hide(); return; }
                 this._currentDefaultUrl = url;
-                this.layer.style.backgroundImage = `url('${this._resolveUrl(url)}')`;
-                this.layer.classList.remove('hidden');
+                this._setBackgroundPreloaded(this._resolveUrl(url));
                 this._updateHint();
             };
 
@@ -189,6 +209,8 @@
          * @param {object} [initialWallpaper] 初始壁纸对象，若不传则从 localStorage 读取
          */
         init(initialWallpaper) {
+            if (this._inited) return; // M14 防重入：document/window 级监听只绑一次
+            this._inited = true;
             this.layer = document.getElementById('wallpaper-layer');
             this.preview = document.getElementById('wallpaperPreview');
             this.urlInput = document.getElementById('wallpaperUrlInput');
@@ -219,7 +241,6 @@
                 });
             }
 
-            // 绑定按钮事件（注意：这些按钮可能不在主界面，而是在设置面板中，我们使用全局选择器）
             this._bindEvents();
             this.applyToUI();
 
@@ -232,7 +253,7 @@
             };
             window.addEventListener('themechange', onThemeChange);
 
-            // 如果之前是 URL 壁纸，将 URL 填入输入框
+            // 若当前为 URL 壁纸，将 URL 回填输入框
             if (this.wallpaper.type === 'url' && this.urlInput) {
                 this.urlInput.value = this.wallpaper.value;
             }
@@ -260,12 +281,12 @@
                     this._currentDefaultUrl = url;
                     // 开关关闭时隐藏壁纸（固定状态仍保留，设置面板仍显示“壁纸已固定”）
                     if (window.App.state.defaultWallpaperEnabled !== false) {
-                        this.layer.style.backgroundImage = `url('${this._resolveUrl(url)}')`;
-                        this.layer.classList.remove('hidden');
+                        this._setBackgroundPreloaded(this._resolveUrl(url));
                         if (this.preview) {
                             this.preview.style.backgroundImage = `url('${url}')`;
                         }
                     } else {
+                        this._preloadToken = null; // 作废进行中的预载
                         this.layer.style.backgroundImage = 'none';
                         this.layer.classList.add('hidden');
                         if (this.preview) {
@@ -283,8 +304,7 @@
                 const safeCss = this._sanitizeCssUrl(this.wallpaper.value);
                 if (safeCss) {
                     this._currentDefaultUrl = null;
-                    this.layer.style.backgroundImage = `url('${safeCss}')`;
-                    this.layer.classList.remove('hidden');
+                    this._setBackgroundPreloaded(safeCss);
                     if (this.preview) {
                         this.preview.style.backgroundImage = `url('${safeCss}')`;
                     }
@@ -297,6 +317,7 @@
                 this._applyDefaultForTheme();
             } else {
                 this._currentDefaultUrl = null;
+                this._preloadToken = null; // 作废进行中的预载
                 if (this.layer) {
                     this.layer.style.backgroundImage = 'none';
                     this.layer.classList.add('hidden');
@@ -484,7 +505,6 @@
 
         /** 绑定事件监听器（通过 ID 选择器，在打开设置面板时这些元素存在） */
         _bindEvents() {
-            // 注意：这些按钮在设置面板中，可能尚未打开，但我们仍可绑定
             const applyBtn = document.getElementById('applyUrlWallpaper');
             const clearBtn = document.getElementById('clearWallpaper');
             const fileInput = document.getElementById('wallpaperFileInput');

@@ -220,7 +220,7 @@ https://api.open-meteo.com/v1/cma?latitude=39.9042&longitude=116.4074&daily=sunr
 
 - **路径**：`img/wallpaper/{black|light}/wallpaper{N}.jpg`（相对路径；`black` 对应暗色主题，`light` 对应亮色主题）。
 - **高清原图**：构建产物（`dist/`）中除压缩后的 WebP 外，还会原样保留 `img/wallpaper/{black|light}/orig/wallpaper{N}.jpg`。设置里开启「使用高清原图」（`sp_hd_wallpaper = true`）时，背景层才改请求原图；压缩图仍用于设置面板缩略预览，固定记录里存的也是压缩版路径，因此关闭开关即可切回压缩图。源码模式（未构建）下原图即 `wallpaper{N}.jpg` 本身，该开关无差别。
-- **数量与推荐者**：由 `img/wallpaper/wppaper_about.json` 声明——
+- **数量与推荐者**：由 `img/wallpaper/wallpaper_about.json` 声明——
   - `black_num` / `light_num`：两套主题的壁纸张数，随机选取在 `[0, 数量)` 中进行（不再写死上限 7）；
   - `black_about` / `light_about`：推荐者列表（可选），`paper_name` = 文件名（不含扩展名），`title` = 展示文本；命中的壁纸会在右上角「喜欢这张壁纸吗？」下方显示推荐者。
 - **回退方案**：元数据读取失败时，按 `sp_theme_wallpaper_count`（默认 8）随机索引发**一次** `fetch` HEAD 请求，并校验响应 `Content-Type` 以 `image/` 开头才算命中（最多重试 6 次）。

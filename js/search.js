@@ -1,4 +1,4 @@
-/**
+﻿/**
  * search.js
  * 搜索模块
  * 挂载于 window.App.Search
@@ -18,12 +18,16 @@
         // JSONP 请求管理
         activeJsonp: null,
         suggestTimer: null,
+        // 键盘高亮索引（L1：收进模块内部，不再挂 DOM 节点）
+        _activeIndex: -1,
 
         /**
          * 初始化搜索模块
          * @param {object} options 可选初始值，如 { suggestionsEnabled, fallbackAPI, searchHistory }
          */
         init(options = {}) {
+            if (this._inited) return; // M14 防重入：document/window 级监听只绑一次
+            this._inited = true;
             // 初始化状态
             const state = window.App.state;
             state.suggestionsEnabled = options.suggestionsEnabled !== undefined ? options.suggestionsEnabled : App.Utils.load('sp_suggestions', true);
@@ -77,6 +81,7 @@
         /** 打开联想下拉面板 */
         _openDropdown() {
             this.dropdown.classList.add('active');
+            this.input?.setAttribute('aria-expanded', 'true');
             if (this.bookmarksSection) {
                 this.bookmarksSection.classList.add('hidden-by-suggestions');
             }
@@ -87,11 +92,13 @@
         _closeDropdown() {
             this.dropdown.classList.remove('active');
             this.dropdown.innerHTML = '';
+            this.input?.setAttribute('aria-expanded', 'false');
+            this.input?.removeAttribute('aria-activedescendant');
             if (this.bookmarksSection) {
                 this.bookmarksSection.classList.remove('hidden-by-suggestions');
             }
             this.dropdown.style.maxHeight = '0';
-            this.dropdown._activeIndex = -1;
+            this._activeIndex = -1;
             this._cleanupJsonp();
         },
 
@@ -99,12 +106,8 @@
         _adjustDropdownHeight() {
             if (!this.dropdown.classList.contains('active')) return;
             const dd = this.dropdown;
-            // 下拉打开时 padding 从 0 过渡到 6px；若此时直接读 scrollHeight，
-            // 量到的是「还没算上上下 padding」的高度，会比真实布局矮 12px，导致：
-            //   · 历史较少时最后一项"清除全部历史"被裁掉、且无法滚动看到；
-            //   · 历史较多时 maxHeight 偏小，滚动条到不了真正的底部。
-            // 这里临时固定 padding 并关闭过渡，量到最终布局后再恢复，
-            // 从而得到准确的内容高度。
+            // 下拉打开时 padding 从 0 过渡到 6px，直接读 scrollHeight 会少算 padding。
+            // 临时固定 padding 并关闭过渡，量到最终布局后再恢复，得到准确高度。
             const prevTransition = dd.style.transition;
             const prevPadding = dd.style.padding;
             dd.style.transition = 'none';
@@ -122,16 +125,23 @@
         _navigateSuggestions(dir) {
             const items = this.dropdown.querySelectorAll('.suggestion-item:not(.no-results)');
             if (!items.length) return;
-            let idx = this.dropdown._activeIndex;
+            let idx = this._activeIndex;
             if (typeof idx !== 'number' || idx < 0 || idx >= items.length) idx = -1;
-            items.forEach(i => i.classList.remove('active'));
+            items.forEach(i => {
+                i.classList.remove('active');
+                i.setAttribute('aria-selected', 'false');
+            });
             idx += dir;
             if (idx < 0) idx = items.length - 1;
             if (idx >= items.length) idx = 0;
-            this.dropdown._activeIndex = idx;
-            items[idx].classList.add('active');
-            this.input.value = items[idx].querySelector('.sug-text').textContent;
-            items[idx].scrollIntoView({ block: 'nearest' });
+            this._activeIndex = idx;
+            const active = items[idx];
+            active.classList.add('active');
+            active.setAttribute('aria-selected', 'true');
+            // combobox 语义：让读屏知道当前高亮项
+            if (active.id) this.input.setAttribute('aria-activedescendant', active.id);
+            this.input.value = active.querySelector('.sug-text').textContent;
+            active.scrollIntoView({ block: 'nearest' });
         },
 
         /** 获取联想词（JSONP） */
@@ -192,31 +202,31 @@
             }
         },
 
-        /** 渲染联想词列表 */
+        /**
+         * 单条联想/历史行模板（M8 DRY：两处共用；图标复用 Utils.ICONS.search，
+         * 不再内联重复 SVG）
+         */
+        _renderSuggestionRow(text, index, badge, extraHtml = '') {
+            return `
+                    <div class="suggestion-item" role="option" id="sug-opt-${index}" aria-selected="false" data-index="${index}">
+                        <span class="sug-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${App.Utils.ICONS.search}</svg></span>
+                        <span class="sug-text">${App.Utils.escapeHtml(text)}</span>
+                        <span class="sug-badge">${App.Utils.escapeHtml(badge)}</span>
+                        ${extraHtml}
+                    </div>
+                `;
+        },
+
+        /** 渲染联想词列表（无结果时直接收起下拉，L7） */
         _renderSuggestions(items, source) {
             if (!items.length) {
-                this.dropdown.innerHTML = `<div class="suggestion-item no-results">${App.Utils.svg('search')} 暂无相关搜索建议</div>`;
-            } else {
-                this.dropdown.innerHTML = items.map((text, i) => `
-                    <div class="suggestion-item" data-index="${i}">
-                        <span class="sug-icon"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="7.5"/><line x1="16" y1="16" x2="21" y2="21"/></svg></span>
-                        <span class="sug-text">${App.Utils.escapeHtml(text)}</span>
-                        <span class="sug-badge">${source}</span>
-                    </div>
-                `).join('');
+                this._closeDropdown();
+                return;
             }
+            this.dropdown.innerHTML = items.map((text, i) => this._renderSuggestionRow(text, i, source)).join('');
             this._openDropdown();
-            this.dropdown._activeIndex = -1;
-
-            // 绑定点击事件
-            this.dropdown.querySelectorAll('.suggestion-item:not(.no-results)').forEach(item => {
-                item.addEventListener('click', () => {
-                    const txt = item.querySelector('.sug-text').textContent;
-                    this.input.value = txt;
-                    this._closeDropdown();
-                    this.performSearch(txt);
-                });
-            });
+            this._activeIndex = -1;
+            // 点击由 _bindEvents 中的容器级委托处理，此处不再逐项绑定（M14）
         },
 
         /** 显示历史记录下拉 */
@@ -226,45 +236,12 @@
                 this._closeDropdown();
                 return;
             }
-            this.dropdown.innerHTML = history.map((text, i) => `
-                <div class="suggestion-item" data-index="${i}">
-                    <span class="sug-icon"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="7.5"/><line x1="16" y1="16" x2="21" y2="21"/></svg></span>
-                    <span class="sug-text">${App.Utils.escapeHtml(text)}</span>
-                    <span class="sug-badge">历史</span>
-                    <button class="btn-delete-history" data-index="${i}" title="删除">${App.Utils.svg('close')}</button>
-                </div>
-            `).join('') + `<div class="history-clear-all" id="historyClearAll">清除全部历史</div>`;
+            this.dropdown.innerHTML = history.map((text, i) => this._renderSuggestionRow(text, i, '历史',
+                `<button class="btn-delete-history" data-index="${i}" title="删除" aria-label="删除历史记录：${App.Utils.escapeAttr(text)}">${App.Utils.svg('close')}</button>`
+            )).join('') + `<button type="button" class="history-clear-all" id="historyClearAll">清除全部历史</button>`;
             this._openDropdown();
-            this.dropdown._activeIndex = -1;
-
-            // 删除单个历史项
-            this.dropdown.querySelectorAll('.btn-delete-history').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this._deleteHistoryItem(parseInt(btn.dataset.index));
-                    this._showHistoryDropdown();
-                });
-            });
-
-            // 点击历史项执行搜索
-            this.dropdown.querySelectorAll('.suggestion-item').forEach(item => {
-                item.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('btn-delete-history')) return;
-                    const txt = item.querySelector('.sug-text').textContent;
-                    this.input.value = txt;
-                    this._closeDropdown();
-                    this.performSearch(txt);
-                });
-            });
-
-            // 清除全部历史
-            const clearBtn = document.getElementById('historyClearAll');
-            if (clearBtn) {
-                clearBtn.addEventListener('click', () => {
-                    this._clearAllHistory();
-                    this._closeDropdown();
-                });
-            }
+            this._activeIndex = -1;
+            // 点击（选中/删除/清空）由容器级委托处理（M14）
         },
 
         _deleteHistoryItem(index) {
@@ -282,6 +259,29 @@
 
         /** 绑定搜索相关事件 */
         _bindEvents() {
+            // 下拉项点击：容器级事件委托（M14），替代每次渲染逐项 addEventListener
+            this.dropdown.addEventListener('click', (e) => {
+                const delBtn = e.target.closest('.btn-delete-history');
+                if (delBtn) {
+                    e.stopPropagation();
+                    this._deleteHistoryItem(parseInt(delBtn.dataset.index, 10));
+                    this._showHistoryDropdown();
+                    return;
+                }
+                if (e.target.closest('.history-clear-all')) {
+                    this._clearAllHistory();
+                    this._closeDropdown();
+                    return;
+                }
+                const item = e.target.closest('.suggestion-item');
+                if (!item || item.classList.contains('no-results')) return;
+                const txt = item.querySelector('.sug-text')?.textContent || '';
+                if (!txt) return;
+                this.input.value = txt;
+                this._closeDropdown();
+                this.performSearch(txt);
+            });
+
             // 输入事件
             this.input.addEventListener('input', () => {
                 const value = this.input.value.trim();

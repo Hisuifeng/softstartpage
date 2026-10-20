@@ -1,12 +1,8 @@
-/**
+﻿/**
  * parallax.js
  * 全局视差背景模块
  *
- * 关键点：鼠标侦测是【全局】的 —— mousemove 绑定在 document 上，
- * 因此不管光标位于页面上的哪个元素（div/容器/文本/其他模块）上方，
- * 视差效果都会持续响应。这修复了 test.html 中
- * 把 mousemove 只绑定到 .background-image 元素本身、
- * 导致悬停到其他容器上时视差中断/回跳的视觉 bug。
+ * mousemove 绑定在 document 上，光标位于任意元素上方时视差都会持续响应。
  *
  * 用法：给参与视差的元素加 data-parallax 属性
  *   data-parallax       深度系数（默认 1，可负数反向，0 不参与）
@@ -24,24 +20,30 @@
         enabled: true,
 
         /* ---------- 内部实现 ---------- */
-        _targets: [],        // [{ el, orig, origTransform }]
+        _targets: [],        // [{ el, depth, max, origTransform }]
         _target: { x: 0, y: 0 },   // 目标位置（归一化 -0.5 ~ 0.5）
         _display: { x: 0, y: 0 },  // 平滑插值位置
         _raf: null,
         _started: false,
+        _resizeTimer: null,
 
         /* ---------- 公共接口 ---------- */
 
         /** 初始化：收集元素 + 绑定【全局】事件 + 启动循环 */
         init(enabled) {
+            if (this._inited) return; // M14 防重入：document/window 级监听只绑一次
+            this._inited = true;
             this.enabled = enabled !== false;
             this._collect();
 
             if (!this._started) {
                 document.addEventListener('mousemove', this._onMove, { passive: true });
-                document.addEventListener('mouseenter', this._onEnter);
                 document.addEventListener('mouseleave', this._onLeave);
-                window.addEventListener('resize', this._collect);
+                // resize 防抖：连续拖动窗口时不反复全量收集
+                window.addEventListener('resize', () => {
+                    clearTimeout(this._resizeTimer);
+                    this._resizeTimer = setTimeout(() => this._collect(), 150);
+                });
                 this._started = true;
                 if (this.enabled) this._startLoop();
                 else this._resetAll();
@@ -65,16 +67,15 @@
             const p = window.App.Parallax;
             p._target.x = (e.clientX / window.innerWidth) - 0.5;
             p._target.y = (e.clientY / window.innerHeight) - 0.5;
+            if (p.enabled) p._startLoop(); // 从静止态恢复
         },
-
-        /** 进入窗口：无操作（坐标由 mousemove 驱动） */
-        _onEnter() {},
 
         /** 鼠标离开窗口：平滑归位，避免残留偏移 */
         _onLeave() {
             const p = window.App.Parallax;
             p._target.x = 0;
             p._target.y = 0;
+            if (p.enabled) p._startLoop(); // 从静止态恢复
         },
 
         /** 收集所有带 data-parallax 的元素，并记录其原始 transform 以便还原 */
@@ -83,22 +84,29 @@
             document.querySelectorAll('[data-parallax]').forEach((el) => {
                 const depth = parseFloat(el.getAttribute('data-parallax')) || 1;
                 const max = parseFloat(el.getAttribute('data-parallax-max')) || 20;
-                /* 实际最远偏移 = max * depth（_tick 中 tx = x*max*depth），
-                   因此外扩量也要用 max*depth，而不能只用 max，
-                   否则 depth>1 时最远点仍会露出边缘。 */
+                // --parallax-pad 供 style.css 用负 inset 外扩元素：平移到最远（max*depth）时边缘仍盖住视口
                 const pad = max * depth;
-                /* 把自身最大偏移写为 CSS 变量 --parallax-pad 供 style.css 读取，
-                   style.css 用负 inset 把元素四周外扩 pad 像素 ——
-                   视差平移到最远时，外扩边缘正好盖住视口，不会露出后面的页面背景。 */
                 el.style.setProperty('--parallax-pad', pad + 'px');
-                el.style.setProperty('--parallax-pad', max + 'px');
+                // 剥离已应用的视差位移：resize 重新收集时，若把当前（含位移的）transform
+                // 记为“原始值”，下次绘制会再追加一次位移，导致偏移逐次翻倍累积
+                const cur = el.style.transform || '';
+                const origTransform = cur
+                    .replace(/translate3d\(\s*-?[\d.]+px\s*,\s*-?[\d.]+px\s*,\s*0\s*\)/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
                 this._targets.push({
                     el,
                     depth,
                     max,
-                    origTransform: el.style.transform || ''
+                    origTransform
                 });
             });
+            // 重新收集后立即按当前插值位置重绘，避免旧 transform 残留
+            if (this._started) {
+                this._targets.forEach((t) => {
+                    if (t.el && t.el.isConnected) t.el.style.transform = t.origTransform;
+                });
+            }
         },
 
         _startLoop() {
@@ -114,11 +122,18 @@
         },
 
         _tick() {
-            this._raf = requestAnimationFrame(() => this._tick());
-
             /* 指数平滑（拖尾效果） */
-            this._display.x += (this._target.x - this._display.x) * 0.08;
-            this._display.y += (this._target.y - this._display.y) * 0.08;
+            const EPS = 0.0004;
+            const dx = this._target.x - this._display.x;
+            const dy = this._target.y - this._display.y;
+            const settled = Math.abs(dx) <= EPS && Math.abs(dy) <= EPS;
+            if (settled) {
+                this._display.x = this._target.x;
+                this._display.y = this._target.y;
+            } else {
+                this._display.x += dx * 0.08;
+                this._display.y += dy * 0.08;
+            }
 
             const { x, y } = this._display;
             this._targets.forEach((t) => {
@@ -127,6 +142,13 @@
                 const ty = y * t.max * t.depth;
                 t.el.style.transform = `${t.origTransform} translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0)`;
             });
+
+            // 收敛后停表，页面静止时不再空转 rAF（下次鼠标移动/离开时恢复）
+            if (settled) {
+                this._raf = null;
+                return;
+            }
+            this._raf = requestAnimationFrame(() => this._tick());
         },
 
         /** 关闭时还原所有元素 */
