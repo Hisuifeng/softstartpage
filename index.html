@@ -58,10 +58,9 @@
                         <line x1="16" y1="16" x2="21" y2="21" />
                     </svg>
                 </div>
-                <input type="text" class="search-input" id="searchInput" placeholder="在 Google 上搜索"
-                    autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false"
-                    aria-controls="suggestionsDropdown" aria-autocomplete="list" aria-haspopup="listbox"
-                    aria-label="网站搜索">
+                <input type="text" class="search-input" id="searchInput" placeholder="在 Google 上搜索" autocomplete="off"
+                    spellcheck="false" role="combobox" aria-expanded="false" aria-controls="suggestionsDropdown"
+                    aria-autocomplete="list" aria-haspopup="listbox" aria-label="网站搜索">
                 <button class="search-clear" id="searchClear" aria-label="清空搜索框"><span class="svg-icon"
                         aria-hidden="true" data-svg="close"></span></button>
             </div>
@@ -86,78 +85,86 @@
             <div class="world-clock-header">
                 <h2><span class="svg-icon" aria-hidden="true" data-svg="globe"></span> 世界时钟</h2>
                 <div class="wc-header-actions">
-                    <button class="wc-hour-btn" id="wcHourToggle" aria-pressed="true"
-                        title="切换 12/24 小时制" aria-label="切换 12/24 小时制"><span
-                            id="wcHourLabel">24H</span></button>
+                    <button class="wc-hour-btn" id="wcHourToggle" aria-pressed="true" title="切换 12/24 小时制"
+                        aria-label="切换 12/24 小时制"><span id="wcHourLabel">24H</span></button>
                     <button class="settings-close-btn" id="closeWorldClockBtn" aria-label="关闭世界时钟"><span
                             class="svg-icon" aria-hidden="true" data-svg="close"></span></button>
                 </div>
             </div>
             <div class="world-clock-body">
-                <div class="world-clock-add">
-                    <select class="settings-select" id="timezonePreset">
-                        <option value="">选择常用城市...</option>
-                        <optgroup label="亚洲">
-                            <option value="Asia/Shanghai">北京 / 上海</option>
-                            <option value="Asia/Hong_Kong">香港</option>
-                            <option value="Asia/Macao">澳门</option>
-                            <option value="Asia/Taipei">台北</option>
-                            <option value="Asia/Tokyo">东京</option>
-                            <option value="Asia/Seoul">首尔</option>
-                            <option value="Asia/Singapore">新加坡</option>
-                            <option value="Asia/Kuala_Lumpur">吉隆坡</option>
-                            <option value="Asia/Bangkok">曼谷</option>
-                            <option value="Asia/Jakarta">雅加达</option>
-                            <option value="Asia/Manila">马尼拉</option>
-                            <option value="Asia/Kolkata">新德里 / 孟买</option>
-                            <option value="Asia/Dubai">迪拜</option>
-                        </optgroup>
-                        <optgroup label="欧洲">
-                            <option value="Europe/London">伦敦</option>
-                            <option value="Europe/Dublin">都柏林</option>
-                            <option value="Europe/Paris">巴黎</option>
-                            <option value="Europe/Berlin">柏林</option>
-                            <option value="Europe/Amsterdam">阿姆斯特丹</option>
-                            <option value="Europe/Rome">罗马</option>
-                            <option value="Europe/Madrid">马德里</option>
-                            <option value="Europe/Moscow">莫斯科</option>
-                            <option value="Europe/Istanbul">伊斯坦布尔</option>
-                        </optgroup>
-                        <optgroup label="美洲">
-                            <option value="America/New_York">纽约</option>
-                            <option value="America/Chicago">芝加哥</option>
-                            <option value="America/Denver">丹佛</option>
-                            <option value="America/Los_Angeles">洛杉矶</option>
-                            <option value="America/Vancouver">温哥华</option>
-                            <option value="America/Mexico_City">墨西哥城</option>
-                            <option value="America/Sao_Paulo">圣保罗</option>
-                        </optgroup>
-                        <optgroup label="大洋洲 / 太平洋">
-                            <option value="Australia/Sydney">悉尼</option>
-                            <option value="Australia/Melbourne">墨尔本</option>
-                            <option value="Pacific/Auckland">奥克兰</option>
-                            <option value="Pacific/Honolulu">檀香山</option>
-                        </optgroup>
-                    </select>
-                    <input type="text" class="settings-input" id="customTimezoneInput"
-                        placeholder="UTC±HH:MM 或时区名（如 Asia/Shanghai）">
-                    <button class="btn primary" id="addTimezoneBtn">添加</button>
-                </div>
-                <div class="wc-dst-row" id="wcDstRow"
-                    title="仅对手动输入的 UTC 偏移生效：填相对基础偏移的增量（基础 UTC-5 填 +1 → 夏令时 UTC-4）；IANA 时区名自动支持">
-                    <label class="wc-dst-toggle"><input type="checkbox" id="dstEnabledChk"> 实行夏令时</label>
-                    <label class="wc-dst-field">夏令时（基础时区 +）
-                        <input type="text" class="settings-input" id="dstOffsetInput"
-                            placeholder="如 +1" disabled>
-                    </label>
-                    <label class="wc-dst-field">半球
-                        <select class="settings-select" id="dstHemiSelect" disabled>
-                            <option value="n">北半球</option>
-                            <option value="s">南半球</option>
-                        </select>
-                    </label>
-                </div>
                 <div class="timezone-list" id="timezoneList"></div>
+                <div class="wc-add-wrapper">
+                    <button class="wc-add-toggle" id="wcAddToggle" aria-expanded="false" aria-controls="wcAddPanel">
+                        <span class="svg-icon" aria-hidden="true" data-svg="plus"></span>
+                        <span>添加时钟</span>
+                        <span class="wc-add-toggle-caret"></span>
+                    </button>
+                    <div class="wc-add-panel" id="wcAddPanel" hidden>
+                        <div class="world-clock-add">
+                            <select class="settings-select" id="timezonePreset">
+                                <option value="">选择常用城市...</option>
+                                <optgroup label="亚洲">
+                                    <option value="Asia/Shanghai">北京 / 上海</option>
+                                    <option value="Asia/Hong_Kong">香港</option>
+                                    <option value="Asia/Macao">澳门</option>
+                                    <option value="Asia/Taipei">台北</option>
+                                    <option value="Asia/Tokyo">东京</option>
+                                    <option value="Asia/Seoul">首尔</option>
+                                    <option value="Asia/Singapore">新加坡</option>
+                                    <option value="Asia/Kuala_Lumpur">吉隆坡</option>
+                                    <option value="Asia/Bangkok">曼谷</option>
+                                    <option value="Asia/Jakarta">雅加达</option>
+                                    <option value="Asia/Manila">马尼拉</option>
+                                    <option value="Asia/Kolkata">新德里 / 孟买</option>
+                                    <option value="Asia/Dubai">迪拜</option>
+                                </optgroup>
+                                <optgroup label="欧洲">
+                                    <option value="Europe/London">伦敦</option>
+                                    <option value="Europe/Dublin">都柏林</option>
+                                    <option value="Europe/Paris">巴黎</option>
+                                    <option value="Europe/Berlin">柏林</option>
+                                    <option value="Europe/Amsterdam">阿姆斯特丹</option>
+                                    <option value="Europe/Rome">罗马</option>
+                                    <option value="Europe/Madrid">马德里</option>
+                                    <option value="Europe/Moscow">莫斯科</option>
+                                    <option value="Europe/Istanbul">伊斯坦布尔</option>
+                                </optgroup>
+                                <optgroup label="美洲">
+                                    <option value="America/New_York">纽约</option>
+                                    <option value="America/Chicago">芝加哥</option>
+                                    <option value="America/Denver">丹佛</option>
+                                    <option value="America/Los_Angeles">洛杉矶</option>
+                                    <option value="America/Vancouver">温哥华</option>
+                                    <option value="America/Mexico_City">墨西哥城</option>
+                                    <option value="America/Sao_Paulo">圣保罗</option>
+                                </optgroup>
+                                <optgroup label="大洋洲 / 太平洋">
+                                    <option value="Australia/Sydney">悉尼</option>
+                                    <option value="Australia/Melbourne">墨尔本</option>
+                                    <option value="Pacific/Auckland">奥克兰</option>
+                                    <option value="Pacific/Honolulu">檀香山</option>
+                                </optgroup>
+                            </select>
+                            <input type="text" class="settings-input" id="customTimezoneInput"
+                                placeholder="UTC±HH:MM 或时区名（如 Asia/Shanghai）">
+                            <button class="btn primary" id="addTimezoneBtn">添加</button>
+                        </div>
+                        <div class="wc-dst-row" id="wcDstRow"
+                            title="仅对手动输入的 UTC 偏移生效：填相对基础偏移的增量（基础 UTC-5 填 +1 → 夏令时 UTC-4）；IANA 时区名自动支持">
+                            <label class="wc-dst-toggle"><input type="checkbox" id="dstEnabledChk"> 实行夏令时</label>
+                            <label class="wc-dst-field">夏令时（基础时区 +）
+                                <input type="text" class="settings-input" id="dstOffsetInput" placeholder="如 +1"
+                                    disabled>
+                            </label>
+                            <label class="wc-dst-field">半球
+                                <select class="settings-select" id="dstHemiSelect" disabled>
+                                    <option value="n">北半球</option>
+                                    <option value="s">南半球</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -168,10 +175,10 @@
             <div class="weather-panel-header">
                 <h2><span class="svg-icon" aria-hidden="true" data-svg="weather"></span> 天气详情</h2>
                 <div style="display:flex; gap:8px;">
-                    <button class="settings-close-btn" id="refreshWeatherBtn" title="刷新天气"
-                        aria-label="刷新天气"><span class="svg-icon" aria-hidden="true" data-svg="refresh"></span></button>
-                    <button class="settings-close-btn" id="closeWeatherBtn" aria-label="关闭天气详情"><span
-                            class="svg-icon" aria-hidden="true" data-svg="close"></span></button>
+                    <button class="settings-close-btn" id="refreshWeatherBtn" title="刷新天气" aria-label="刷新天气"><span
+                            class="svg-icon" aria-hidden="true" data-svg="refresh"></span></button>
+                    <button class="settings-close-btn" id="closeWeatherBtn" aria-label="关闭天气详情"><span class="svg-icon"
+                            aria-hidden="true" data-svg="close"></span></button>
                 </div>
             </div>
             <div class="weather-panel-body">
@@ -235,152 +242,273 @@
                 <div class="settings-panel-body" id="settingsPanelBody">
                     <section class="settings-group" id="secTheme">
                         <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
-                                data-svg="sun"></span>外观主题</div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="selectThemeMode">主题模式</label>
-                            <select class="settings-select" id="selectThemeMode">
-                                <option value="auto">跟随系统</option>
-                                <option value="light">亮色</option>
-                                <option value="dark">暗色</option>
-                            </select>
-                        </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="accentColorInput">强调色</label>
-                            <div class="settings-color-wrap">
-                                <input type="color" class="settings-color" id="accentColorInput" value="#8ab4f8"
-                                    aria-label="自定义强调色">
-                                <button class="btn" id="btnResetAccent" type="button">恢复默认</button>
+                                data-svg="sun"></span>外观</div>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">主题模式</div>
+                                    <div class="settings-item-hint">跟随系统 / 亮色 / 暗色</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <select class="settings-select" id="selectThemeMode">
+                                        <option value="auto">跟随系统</option>
+                                        <option value="light">亮色</option>
+                                        <option value="dark">暗色</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
-                        <p class="settings-hint">自定义强调色会同时应用到亮/暗主题（按钮、焦点光环、联想高亮等），保存后生效；点「恢复默认」回到主题自带配色。</p>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">强调色</div>
+                                    <div class="settings-item-hint">自定义按钮、焦点光环及联想高亮的颜色</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <div class="settings-color-wrap">
+                                        <input type="color" class="settings-color" id="accentColorInput" value="#8ab4f8"
+                                            aria-label="自定义强调色">
+                                        <button class="btn" id="btnResetAccent" type="button">恢复默认</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </section>
 
                     <section class="settings-group" id="secTime">
                         <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
                                 data-svg="clock"></span>时间显示</div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="toggle24Hour">24小时制</label>
-                            <label class="toggle-switch"><input type="checkbox" id="toggle24Hour"><span
-                                    class="toggle-slider"></span></label>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">24小时制</div>
+                                    <div class="settings-item-hint">切换 12/24 小时制</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <label class="toggle-switch"><input type="checkbox" id="toggle24Hour"><span
+                                            class="toggle-slider"></span></label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="toggleSeconds">显示秒</label>
-                            <label class="toggle-switch"><input type="checkbox" id="toggleSeconds"><span
-                                    class="toggle-slider"></span></label>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">显示秒数</div>
+                                    <div class="settings-item-hint">控制时钟是否显示秒</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <label class="toggle-switch"><input type="checkbox" id="toggleSeconds"><span
+                                            class="toggle-slider"></span></label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="selectDateFormat">日期格式</label>
-                            <select class="settings-select" id="selectDateFormat">
-                                <option value="cn">YYYY年MM月DD日</option>
-                                <option value="iso">YYYY-MM-DD</option>
-                                <option value="us">MM/DD/YYYY</option>
-                                <option value="uk">DD/MM/YYYY</option>
-                            </select>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">日期格式</div>
+                                    <div class="settings-item-hint">选择日期显示格式</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <select class="settings-select" id="selectDateFormat">
+                                        <option value="cn">YYYY年MM月DD日</option>
+                                        <option value="iso">YYYY-MM-DD</option>
+                                        <option value="us">MM/DD/YYYY</option>
+                                        <option value="uk">DD/MM/YYYY</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </section>
 
                     <section class="settings-group" id="secBackground">
                         <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
                                 data-svg="rain"></span>动态背景</div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="toggleWeatherEffect">启用雨效</label>
-                            <label class="toggle-switch"><input type="checkbox" id="toggleWeatherEffect" checked><span
-                                    class="toggle-slider"></span></label>
-                        </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="rangeRainOpacity">雨效透明度</label>
-                            <div class="settings-range-wrap">
-                                <input type="range" class="settings-range" id="rangeRainOpacity" min="0" max="100"
-                                    step="5" value="100">
-                                <span class="settings-range-value" id="rainOpacityValue">100%</span>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">启用雨效</div>
+                                    <div class="settings-item-hint">在页面上叠加下雨动效</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <label class="toggle-switch"><input type="checkbox" id="toggleWeatherEffect"
+                                            checked><span class="toggle-slider"></span></label>
+                                </div>
                             </div>
                         </div>
-                        <div class="settings-row">
-                            <span class="settings-row-label" id="labelRainColor">雨效颜色</span>
-                            <div class="settings-color-wrap">
-                                <label class="settings-color-item" title="暗色主题下的雨效颜色" aria-label="暗色主题下的雨效颜色">暗
-                                    <input type="color" class="settings-color" id="rainColorDark" value="#87ceeb">
-                                </label>
-                                <label class="settings-color-item" title="亮色主题下的雨效颜色" aria-label="亮色主题下的雨效颜色">亮
-                                    <input type="color" class="settings-color" id="rainColorLight" value="#2a8fd4">
-                                </label>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">雨效透明度</div>
+                                    <div class="settings-item-hint">调节雨滴的可见程度</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <div class="settings-range-wrap">
+                                        <input type="range" class="settings-range" id="rangeRainOpacity" min="0"
+                                            max="100" step="5" value="100">
+                                        <span class="settings-range-value" id="rainOpacityValue">100%</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="toggleParticles">粒子背景</label>
-                            <label class="toggle-switch"><input type="checkbox" id="toggleParticles"><span
-                                    class="toggle-slider"></span></label>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">雨效颜色</div>
+                                    <div class="settings-item-hint">分别设置暗色与亮色主题下的雨滴颜色</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <div class="settings-color-wrap">
+                                        <label class="settings-color-item" title="暗色主题下的雨效颜色" aria-label="暗色主题下的雨效颜色">暗
+                                            <input type="color" class="settings-color" id="rainColorDark"
+                                                value="#87ceeb">
+                                        </label>
+                                        <label class="settings-color-item" title="亮色主题下的雨效颜色" aria-label="亮色主题下的雨效颜色">亮
+                                            <input type="color" class="settings-color" id="rainColorLight"
+                                                value="#2a8fd4">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="toggleParallax">视差背景</label>
-                            <label class="toggle-switch"><input type="checkbox" id="toggleParallax" checked><span
-                                    class="toggle-slider"></span></label>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">粒子背景</div>
+                                    <div class="settings-item-hint">在背景中显示缓慢漂浮的微粒装饰</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <label class="toggle-switch"><input type="checkbox" id="toggleParticles"><span
+                                            class="toggle-slider"></span></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">视差背景</div>
+                                    <div class="settings-item-hint">随鼠标移动产生轻微视差位移，偏好减少动效时可关闭</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <label class="toggle-switch"><input type="checkbox" id="toggleParallax"
+                                            checked><span class="toggle-slider"></span></label>
+                                </div>
+                            </div>
                         </div>
                     </section>
 
                     <section class="settings-group" id="secWallpaper">
                         <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
                                 data-svg="image"></span>壁纸</div>
-                        <div class="settings-row" style="flex-direction:column; align-items:flex-start;">
-                            <div style="display:flex; gap:8px; width:100%; align-items:center;">
-                                <input type="text" class="settings-input" id="wallpaperUrlInput"
-                                    placeholder="输入网络图片URL">
-                                <button class="btn" id="applyUrlWallpaper">应用</button>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">自定义壁纸</div>
+                                    <div class="settings-item-hint">通过网络图片或本地上传设置壁纸</div>
+                                </div>
                             </div>
-                            <div class="wallpaper-actions" style="margin-top:8px;">
-                                <label class="file-upload-label" for="wallpaperFileInput"><span class="svg-icon"
-                                        aria-hidden="true" data-svg="folder"></span>上传本地图片</label>
-                                <input type="file" class="file-upload-input" id="wallpaperFileInput" accept="image/*">
-                                <button class="btn danger" id="clearWallpaper">清除壁纸</button>
+                            <div class="settings-item-details">
+                                <div class="settings-inline-row">
+                                    <input type="text" class="settings-input" id="wallpaperUrlInput"
+                                        placeholder="输入网络图片URL">
+                                    <button class="btn" id="applyUrlWallpaper">应用</button>
+                                </div>
+                                <div class="wallpaper-actions">
+                                    <label class="file-upload-label" for="wallpaperFileInput"><span class="svg-icon"
+                                            aria-hidden="true" data-svg="folder"></span>上传本地图片</label>
+                                    <input type="file" class="file-upload-input" id="wallpaperFileInput"
+                                        accept="image/*">
+                                    <button class="btn danger" id="clearWallpaper">清除壁纸</button>
+                                </div>
+                                <p class="settings-hint">受浏览器 localStorage 限制，本地图片需小于 2MB。</p>
+                                <div class="wallpaper-preview" id="wallpaperPreview"></div>
+                                <p class="settings-hint wallpaper-about hidden" id="wallpaperAbout"></p>
+                                <p class="settings-hint">你想投稿你喜欢的壁纸吗？<a
+                                        href="https://github.com/Hisuifeng/softstartpage/issues/1" target="_blank"
+                                        rel="noopener noreferrer">点击提交 issues</a></p>
                             </div>
-                            <p class="settings-hint">受浏览器 localStorage 限制，本地图片需小于 2MB。</p>
-                            <div class="wallpaper-preview" id="wallpaperPreview"></div>
-                            <p class="settings-hint wallpaper-about hidden" id="wallpaperAbout"></p>
-                            <p class="settings-hint">你想投稿你喜欢的壁纸吗？<a
-                                    href="https://github.com/Hisuifeng/softstartpage/issues/1" target="_blank"
-                                    rel="noopener noreferrer">点击提交issues</a></p>
                         </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="toggleDefaultWallpaper">未设置时启用随机壁纸<span
-                                    class="wallpaper-pin-status hidden" id="wallpaperPinStatus">壁纸已固定</span></label>
-                            <label class="toggle-switch"><input type="checkbox" id="toggleDefaultWallpaper"
-                                    checked><span class="toggle-slider"></span></label>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">未设置时使用随机壁纸</div>
+                                    <div class="settings-item-hint">无自定义壁纸时自动从仓库随机选择一张</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <span class="wallpaper-pin-status hidden" id="wallpaperPinStatus">壁纸已固定</span>
+                                    <label class="toggle-switch"><input type="checkbox" id="toggleDefaultWallpaper"
+                                            checked><span class="toggle-slider"></span></label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="toggleHdWallpaper">使用高清原图</label>
-                            <label class="toggle-switch"><input type="checkbox" id="toggleHdWallpaper"><span
-                                    class="toggle-slider"></span></label>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">使用高清原图</div>
+                                    <div class="settings-item-hint">使用未压缩的原图，弱网建议关闭</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <label class="toggle-switch"><input type="checkbox" id="toggleHdWallpaper"><span
+                                            class="toggle-slider"></span></label>
+                                </div>
+                            </div>
+                            <div class="settings-item-details">
+                                <p class="settings-hint">开启后默认壁纸与已固定的仓库壁纸改用未压缩原图（单张最大约 18MB，首次加载较慢）；关闭则使用压缩图。</p>
+                            </div>
                         </div>
-                        <p class="settings-hint">开启后，默认壁纸与已固定的仓库壁纸改用未压缩原图（单张最大约 18MB，首次加载较慢）；关闭则使用压缩图，建议弱网保持关闭。</p>
                     </section>
 
                     <section class="settings-group" id="secSearch">
                         <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
                                 data-svg="search"></span>搜索与引擎</div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="toggleSuggestions">启用联想</label>
-                            <label class="toggle-switch"><input type="checkbox" id="toggleSuggestions" checked><span
-                                    class="toggle-slider"></span></label>
+
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">启用联想</div>
+                                    <div class="settings-item-hint">启用后输入时从 API 获取搜索建议，自定义将使用备用API</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <label class="toggle-switch"><input type="checkbox" id="toggleSuggestions"><span
+                                            class="toggle-slider"></span></label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="selectFallbackAPI">备用API</label>
-                            <select class="settings-select" id="selectFallbackAPI">
-                                <option value="baidu">百度</option>
-                                <option value="bing">Bing</option>
-                                <option value="google">Google</option>
-                            </select>
+
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">备用API</div>
+                                    <div class="settings-item-hint">无联想接口的引擎将改用该 API 获取建议</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <select class="settings-select" id="selectFallbackAPI">
+                                        <option value="baidu">百度</option>
+                                        <option value="bing">Bing</option>
+                                        <option value="google">Google</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <span class="settings-row-label">搜索历史</span>
-                            <button class="btn danger" id="btnClearAllHistory">清除全部历史</button>
+
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">搜索历史</div>
+                                    <div class="settings-item-hint">仅保存在本地浏览器，清除后不可恢复</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <button class="btn danger" id="btnClearAllHistory">清除全部历史</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-group-label" style="margin-top:8px;"><span class="svg-icon"
-                                aria-hidden="true" data-svg="globe"></span>默认引擎</div>
+
+                        <div class="settings-subheading"><span class="svg-icon" aria-hidden="true"
+                                data-svg="globe"></span>默认引擎</div>
                         <div class="default-engine-list" id="defaultEngineList"></div>
                         <div class="settings-hint">点击右侧眼睛图标可隐藏默认引擎；隐藏后不会出现在搜索框下方的引擎切换器中，也不占用数字快捷键。</div>
-                        <div class="settings-group-label" style="margin-top:8px;"><span class="svg-icon"
-                                aria-hidden="true" data-svg="wrench"></span>自定义搜索引擎 <span
-                                style="font-weight:400;font-size:0.8rem;color:var(--text-tertiary);">(可拖拽或用↑↓按钮排序)</span></div>
+
+                        <div class="settings-subheading"><span class="svg-icon" aria-hidden="true"
+                                data-svg="wrench"></span>自定义搜索引擎 <span class="settings-subheading-note">(可拖拽或用↑↓按钮排序)</span></div>
                         <div class="custom-engines-list" id="customEnginesList"></div>
                         <button class="btn-add-bookmark" id="btnAddCustomEngine">+ 添加自定义引擎</button>
                         <button class="btn danger settings-clear-btn" id="btnClearCustomEngines">清空自定义引擎</button>
@@ -388,27 +516,48 @@
 
                     <section class="settings-group" id="secBookmarks">
                         <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
-                                data-svg="pin"></span>书签管理 <span
-                                style="font-weight:400;font-size:0.8rem;color:var(--text-tertiary);">(可拖拽或用↑↓按钮排序)</span>
+                                data-svg="pin"></span>书签管理 <span class="settings-group-note">(可拖拽或用↑↓按钮排序)</span></div>
+
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">书签页面内跳转</div>
+                                    <div class="settings-item-hint">关闭后点击书签将用新标签页打开</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <label class="toggle-switch"><input type="checkbox" id="toggleBookmarkInPage"
+                                            checked><span class="toggle-slider"></span></label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="toggleBookmarkInPage">书签页面内跳转</label>
-                            <label class="toggle-switch"><input type="checkbox" id="toggleBookmarkInPage" checked><span
-                                    class="toggle-slider"></span></label>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">自动获取网站图标</div>
+                                    <div class="settings-item-hint">未手动设置图标时自动获取 favicon</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <label class="toggle-switch"><input type="checkbox" id="toggleFavicon" checked><span
+                                            class="toggle-slider"></span></label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="toggleFavicon">自动获取网站图标</label>
-                            <label class="toggle-switch"><input type="checkbox" id="toggleFavicon" checked><span
-                                    class="toggle-slider"></span></label>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">书签图标来源</div>
+                                    <div class="settings-item-hint">自动获取失败时的回退方式</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <select class="settings-select" id="selectFaviconSource">
+                                        <option value="direct">站点 /favicon.ico（默认）</option>
+                                        <option value="google">Google</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="selectFaviconSource">书签图标来源</label>
-                            <select class="settings-select" id="selectFaviconSource">
-                                <option value="direct">站点 /favicon.ico（默认）</option>
-                                <option value="google">Google</option>
-                            </select>
-                        </div>
-                        <div class="settings-hint">未手动设置图标时自动获取网站图标（favicon）。「站点 /favicon.ico」先请求完整域名，失败再回退二级域名，仍失败显示文字首字母；关闭自动获取则只显示首字母（手动填写的图标不受影响）。</div>
+                        <div class="settings-hint">未手动设置图标时自动获取网站图标（favicon）。「站点
+                            /favicon.ico」先请求完整域名，失败再回退二级域名，仍失败显示文字首字母；关闭自动获取则只显示首字母（手动填写的图标不受影响）。</div>
                         <div class="bookmark-edit-list" id="bookmarkEditList"></div>
                         <button class="btn-add-bookmark" id="btnAddBookmark">+ 添加书签</button>
                         <div class="bookmark-io-actions">
@@ -421,64 +570,132 @@
                     <section class="settings-group" id="secData">
                         <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
                                 data-svg="folder"></span>配置档案</div>
-                        <div class="settings-row">
-                            <label class="visually-hidden" for="selectProfile">当前档案</label>
-                            <select class="settings-select" id="selectProfile" style="flex:1;"></select>
-                            <button class="btn primary" id="btnSwitchProfile" type="button">切换</button>
+
+                        <div class="settings-item settings-item--wide" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">当前档案</div>
+                                    <div class="settings-item-hint">选择要切换到的档案</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <label class="visually-hidden" for="selectProfile">当前档案</label>
+                                    <select class="settings-select settings-stretch" id="selectProfile"></select>
+                                    <button class="btn primary" id="btnSwitchProfile" type="button">切换</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <input type="text" class="settings-input" id="profileNameInput"
-                                placeholder="新档案名称（基于当前数据）" style="flex:1;">
-                            <button class="btn" id="btnCreateProfile" type="button">新建</button>
+                        <div class="settings-item settings-item--wide" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">新建档案</div>
+                                    <div class="settings-item-hint">基于当前书签与引擎创建</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <input type="text" class="settings-input" id="profileNameInput"
+                                        placeholder="新档案名称（基于当前数据）">
+                                    <button class="btn" id="btnCreateProfile" type="button">新建</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <button class="btn" id="btnRenameProfile" type="button">重命名当前档案</button>
-                            <button class="btn danger" id="btnDeleteProfile" type="button">删除当前档案</button>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">档案管理</div>
+                                    <div class="settings-item-hint">重命名或删除当前档案</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <button class="btn" id="btnRenameProfile" type="button">重命名</button>
+                                    <button class="btn danger" id="btnDeleteProfile" type="button">删除</button>
+                                </div>
+                            </div>
                         </div>
-                        <p class="settings-hint">每个档案保存一套「书签 + 自定义引擎 + 当前引擎」（如工作/学习/私人），切换即整套替换；至少保留一个档案。切换会立即保存当前书签与引擎改动。</p>
-                        <div class="settings-group-label" style="margin-top:12px;"><span class="svg-icon"
-                                aria-hidden="true" data-svg="info"></span>设置备份</div>
-                        <div class="settings-row">
-                            <button class="btn" id="btnExportSettings" type="button">导出全部设置</button>
-                            <button class="btn" id="btnImportSettings" type="button">导入全部设置</button>
+                        <p class="settings-hint">每个档案保存一套「书签 + 自定义引擎 +
+                            当前引擎」（如工作/学习/私人），切换即整套替换；至少保留一个档案。切换会立即保存当前书签与引擎改动。</p>
+
+                        <div class="settings-subheading"><span class="svg-icon" aria-hidden="true"
+                                data-svg="info"></span>设置备份</div>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">导出 / 导入全部设置</div>
+                                    <div class="settings-item-hint">JSON 文本到剪贴板，换设备一键迁移</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <button class="btn" id="btnExportSettings" type="button">导出</button>
+                                    <button class="btn" id="btnImportSettings" type="button">导入</button>
+                                </div>
+                            </div>
                         </div>
-                        <p class="settings-hint">导出为 JSON 文本到剪贴板（含全部设置、书签、引擎、世界时钟与配置档案）；导入会按白名单清洗后覆盖并刷新页面。不含搜索历史与天气缓存。</p>
+                        <p class="settings-hint">导出内容含全部设置、书签、引擎、世界时钟与配置档案；导入会按白名单清洗后覆盖并刷新页面。不含搜索历史与天气缓存。
+                        </p>
                     </section>
 
                     <section class="settings-group" id="secLocation">
                         <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
                                 data-svg="location"></span>位置与天气</div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="selectWeatherSource">天气数据源</label>
-                            <select class="settings-select" id="selectWeatherSource">
-                                <option value="uapi">UAPI（uapis.cn）</option>
-                                <option value="open-meteo">Open-Meteo（CMA）</option>
-                            </select>
+
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">天气数据源</div>
+                                    <div class="settings-item-hint">切换 UAPI / Open-Meteo 数据源</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <select class="settings-select" id="selectWeatherSource">
+                                        <option value="uapi">UAPI（uapis.cn）</option>
+                                        <option value="open-meteo">Open-Meteo（CMA）</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                         <!-- UAPI 定位：仅选中 UAPI 时显示 -->
                         <div class="settings-subgroup" id="uapiLocationFields">
-                            <div class="settings-row">
-                                <label class="settings-row-label" for="weatherCityInput">城市名称</label>
-                                <input type="text" class="settings-input" id="weatherCityInput"
-                                    placeholder="如 北京 / Tokyo">
+                            <div class="settings-item settings-item--wide" tabindex="0" data-active="false">
+                                <div class="settings-item-summary">
+                                    <div class="settings-item-main">
+                                        <div class="settings-item-title">城市名称</div>
+                                        <div class="settings-item-hint">如 北京 / Tokyo</div>
+                                    </div>
+                                    <div class="settings-item-control">
+                                        <label class="visually-hidden" for="weatherCityInput">城市名称</label>
+                                        <input type="text" class="settings-input" id="weatherCityInput"
+                                            placeholder="如 北京 / Tokyo">
+                                    </div>
+                                </div>
                             </div>
-                            <div class="settings-row">
-                                <label class="settings-row-label" for="weatherAdcodeInput">城市 Adcode</label>
-                                <input type="text" class="settings-input" id="weatherAdcodeInput"
-                                    placeholder="如 110000（优先于城市名）">
+                            <div class="settings-item settings-item--wide" tabindex="0" data-active="false">
+                                <div class="settings-item-summary">
+                                    <div class="settings-item-main">
+                                        <div class="settings-item-title">城市 Adcode</div>
+                                        <div class="settings-item-hint">如 110000，优先于城市名</div>
+                                    </div>
+                                    <div class="settings-item-control">
+                                        <label class="visually-hidden" for="weatherAdcodeInput">城市 Adcode</label>
+                                        <input type="text" class="settings-input" id="weatherAdcodeInput"
+                                            placeholder="如 110000">
+                                    </div>
+                                </div>
                             </div>
                             <span class="settings-hint">城市名 / Adcode 留空时按 IP 自动定位</span>
                         </div>
                         <!-- Open-Meteo 坐标：仅选中 Open-Meteo 时显示 -->
                         <div class="settings-subgroup" id="openMeteoLocationFields">
-                            <div class="settings-row">
-                                <label class="visually-hidden" for="customLatInput">纬度</label>
-                                <input type="number" class="settings-input" id="customLatInput"
-                                    placeholder="纬度 (如 39.9)" step="any" style="flex:1;">
-                                <label class="visually-hidden" for="customLonInput">经度</label>
-                                <input type="number" class="settings-input" id="customLonInput"
-                                    placeholder="经度 (如 116.4)" step="any" style="flex:1;">
-                                <button class="btn primary" id="applyCustomCoords">应用</button>
+                            <div class="settings-item settings-item--wide" tabindex="0" data-active="false">
+                                <div class="settings-item-summary">
+                                    <div class="settings-item-main">
+                                        <div class="settings-item-title">自定义经纬度</div>
+                                        <div class="settings-item-hint">按坐标定位，数字均可留空</div>
+                                    </div>
+                                    <div class="settings-item-control">
+                                        <label class="visually-hidden" for="customLatInput">纬度</label>
+                                        <input type="number" class="settings-input settings-stretch" id="customLatInput"
+                                            placeholder="纬度 (如 39.9)" step="any">
+                                        <label class="visually-hidden" for="customLonInput">经度</label>
+                                        <input type="number" class="settings-input settings-stretch" id="customLonInput"
+                                            placeholder="经度 (如 116.4)" step="any">
+                                        <button class="btn primary" id="applyCustomCoords">应用</button>
+                                    </div>
+                                </div>
                             </div>
                             <span class="settings-hint">经纬度留空时按 IP 自动定位</span>
                         </div>
@@ -487,48 +704,87 @@
                     <section class="settings-group" id="secShortcuts">
                         <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
                                 data-svg="keyboard"></span>快捷键</div>
-                        <div class="settings-row">
-                            <label class="settings-row-label" for="selectModifierKey">切换引擎修饰键</label>
-                            <select class="settings-select" id="selectModifierKey">
-                                <option value="ctrlshift">Ctrl + Shift + 数字</option>
-                                <option value="ctrl">Ctrl + 数字</option>
-                                <option value="alt">Alt + 数字</option>
-                                <option value="none">仅数字键 (焦点不在输入框)</option>
-                            </select>
+                        <div class="settings-item" tabindex="0" data-active="false">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">切换引擎修饰键</div>
+                                    <div class="settings-item-hint">默认 Ctrl + Shift + 数字，可避免与浏览器
+                                        「切换到第 N 个标签页」(Ctrl+数字) 冲突</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <select class="settings-select" id="selectModifierKey">
+                                        <option value="ctrlshift">Ctrl + Shift + 数字</option>
+                                        <option value="ctrl">Ctrl + 数字</option>
+                                        <option value="alt">Alt + 数字</option>
+                                        <option value="none">仅数字键 (焦点不在输入框)</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <span class="settings-hint">默认 Ctrl+Shift+数字，可避免与浏览器「切换到第 N 个标签页」(Ctrl+数字) 冲突。</span>
                     </section>
 
                     <section class="settings-group" id="secAbout">
                         <div class="settings-group-label"><span class="svg-icon" aria-hidden="true"
                                 data-svg="info"></span>关于</div>
-                        <div class="settings-row">
-                            <span class="settings-row-label">项目</span>
-                            <span class="about-value">轻-soft 起始页 <span class="about-sub">SoftStartpage v2</span></span>
+
+                        <div class="settings-item settings-item--info">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">项目</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <span class="about-value">轻-soft 起始页 <span class="about-sub">SoftStartpage
+                                            v2</span></span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row" style="flex-direction:column; align-items:flex-start; gap:4px;">
-                            <span class="settings-row-label">简介</span>
-                            <span class="about-value">一个纯前端、可直接本地运行的浏览器起始页。</span>
+                        <div class="settings-item settings-item--info">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">简介</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <span class="about-value">一个纯前端、可直接本地运行的浏览器起始页。</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <span class="settings-row-label">作者</span>
-                            <span class="about-value">Hikari</span>
+                        <div class="settings-item settings-item--info">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">作者</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <span class="about-value">Hikari</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <span class="settings-row-label">项目仓库</span>
-                            <a class="about-value about-link" href="https://github.com/Hisuifeng/softstartpage"
-                                target="_blank" rel="noopener noreferrer">Hisuifeng/softstartpage</a>
+                        <div class="settings-item settings-item--info">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">项目仓库</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <a class="about-value about-link" href="https://github.com/Hisuifeng/softstartpage"
+                                        target="_blank" rel="noopener noreferrer">Hisuifeng/softstartpage</a>
+                                </div>
+                            </div>
                         </div>
-                        <div class="settings-row">
-                            <span class="settings-row-label">协议</span>
-                            <span class="about-value">MIT</span>
+                        <div class="settings-item settings-item--info">
+                            <div class="settings-item-summary">
+                                <div class="settings-item-main">
+                                    <div class="settings-item-title">协议</div>
+                                </div>
+                                <div class="settings-item-control">
+                                    <span class="about-value">MIT</span>
+                                </div>
+                            </div>
                         </div>
                     </section>
                 </div>
             </div>
             <div class="settings-panel-footer">
                 <button class="btn danger" id="btnResetDefaults">恢复默认</button>
-                <div style="flex:1;"></div>
+                <div class="settings-footer-spacer"></div>
                 <button class="btn" id="btnCancelSettings">取消</button>
                 <button class="btn primary" id="btnSaveSettings">保存</button>
             </div>

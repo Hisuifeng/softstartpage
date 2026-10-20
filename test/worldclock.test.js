@@ -29,6 +29,20 @@ test('_fmtOffset 分钟数 → 显示标签', () => {
     assert.strictEqual(WC._fmtOffset(-300), 'UTC-5');
 });
 
+test('_entryDisplay 汇总时间/日期行/标签（renderList 与 updateTimes 共用）', () => {
+    const WC = boot();
+    const d = WC._entryDisplay({ name: 'UTC+8', offset: 'UTC+8:00' });
+    assert.ok(d.info && d.info.offMin === 480);
+    assert.match(d.timeStr, /\d{1,2}:\d{2}/);
+    assert.ok(d.dateLine.includes('· UTC+8'));
+    assert.ok(d.tagsHtml.includes('tz-tags'));
+    assert.ok(d.tagsHtml.includes('tz-dn')); // 昼夜标签
+    // 本地条目：无偏移标签段
+    const local = WC._entryDisplay({ name: '本地时间', offset: 'local' });
+    assert.strictEqual(local.info.isLocal, true);
+    assert.ok(!local.dateLine.includes('·'));
+});
+
 test('_isValidTz 校验 IANA 时区标识', () => {
     const WC = boot();
     assert.strictEqual(WC._isValidTz('Asia/Shanghai'), true);

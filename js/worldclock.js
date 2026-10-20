@@ -53,6 +53,8 @@
             this.dstEnabled = document.getElementById('dstEnabledChk');
             this.dstOffsetInput = document.getElementById('dstOffsetInput');
             this.dstHemiSelect = document.getElementById('dstHemiSelect');
+            this.addToggle = document.getElementById('wcAddToggle');
+            this.addPanel = document.getElementById('wcAddPanel');
 
             if (!this.overlay) {
                 console.warn('世界时钟面板元素缺失，跳过世界时钟模块');
@@ -371,6 +373,24 @@
             return `<div class="tz-tags">${tags.join('')}</div>`;
         },
 
+        /**
+         * 条目的显示数据（renderList 与 updateTimes 共用，避免两处重复格式化）
+         * @param {object} tz 条目
+         * @returns {{info: object, timeStr: string, dateLine: string, tagsHtml: string}}
+         */
+        _entryDisplay(tz) {
+            const info = this._entryInfo(tz);
+            const clock = window.App.Clock;
+            const timeStr = clock?.formatTime ? clock.formatTime(info.date) : info.date.toLocaleTimeString();
+            const dateStr = clock?.formatDate ? clock.formatDate(info.date) : info.date.toLocaleDateString();
+            return {
+                info,
+                timeStr,
+                dateLine: info.label ? `${dateStr} · ${info.label}` : dateStr,
+                tagsHtml: this._tagsHtml(tz, info)
+            };
+        },
+
         /** 渲染时区列表 */
         renderList() {
             if (!this.listEl) return;
@@ -379,22 +399,18 @@
                 this.listEl.innerHTML = `<div class="wc-empty">尚未添加时区，使用上方「选择常用城市」或手动输入添加</div>`;
                 return;
             }
-            const clock = window.App.Clock;
             this.listEl.innerHTML = this.timezones.map((tz, idx) => {
-                const info = this._entryInfo(tz);
-                const timeStr = clock?.formatTime ? clock.formatTime(info.date) : info.date.toLocaleTimeString();
-                const dateStr = clock?.formatDate ? clock.formatDate(info.date) : info.date.toLocaleDateString();
+                const d = this._entryDisplay(tz);
                 const isLocal = tz.offset === 'local';
-                const dateLine = info.label ? `${dateStr} · ${info.label}` : dateStr;
-                const nameTitle = isLocal ? '点击修改名称' : `点击修改名称（当前 ${info.label || '—'}）`;
-                const cls = info.isLocal ? 'timezone-item is-local' : 'timezone-item';
+                const nameTitle = isLocal ? '点击修改名称' : `点击修改名称（当前 ${d.info.label || '—'}）`;
+                const cls = d.info.isLocal ? 'timezone-item is-local' : 'timezone-item';
                 return `
                     <div class="${cls}" data-index="${idx}">
                         <div class="tz-info">
                             <span class="tz-name" data-idx="${idx}" title="${App.Utils.escapeHtml(nameTitle)}">${App.Utils.escapeHtml(tz.name)} ${isLocal ? '(本地)' : ''}</span>
-                            <span class="tz-time">${timeStr}</span>
-                            <span class="tz-date">${dateLine}</span>
-                            ${this._tagsHtml(tz, info)}
+                            <span class="tz-time">${d.timeStr}</span>
+                            <span class="tz-date">${d.dateLine}</span>
+                            ${d.tagsHtml}
                         </div>
                         <button class="btn-icon-danger" data-idx="${idx}" title="删除">${App.Utils.svg('close')}</button>
                     </div>
@@ -405,23 +421,21 @@
             this._bindListEvents();
         },
 
-        /** 更新已渲染列表中的时间与标签 */
+        /** 更新已渲染列表中的时间与标签（标签仅在内容变化时写入，避免每秒重绘导致悬停/tooltip 闪烁） */
         updateTimes() {
             if (!this.listEl || !this.overlay.classList.contains('open')) return;
-            const clock = window.App.Clock;
             const items = this.listEl.querySelectorAll('.timezone-item');
             if (items.length !== this.timezones.length) {
                 this.renderList();
                 return;
             }
             items.forEach((item, idx) => {
-                const tz = this.timezones[idx];
-                const info = this._entryInfo(tz);
-                const timeStr = clock?.formatTime ? clock.formatTime(info.date) : info.date.toLocaleTimeString();
-                const dateStr = clock?.formatDate ? clock.formatDate(info.date) : info.date.toLocaleDateString();
-                item.querySelector('.tz-time').textContent = timeStr;
-                item.querySelector('.tz-date').textContent = info.label ? `${dateStr} · ${info.label}` : dateStr;
-                item.querySelector('.tz-tags').innerHTML = this._tagsHtml(tz, info);
+                const d = this._entryDisplay(this.timezones[idx]);
+                item.querySelector('.tz-time').textContent = d.timeStr;
+                item.querySelector('.tz-date').textContent = d.dateLine;
+                const tagsEl = item.querySelector('.tz-tags');
+                // 昼夜标签等每分钟才可能变化；内容相同则跳过 DOM 写入
+                if (tagsEl && tagsEl.innerHTML !== d.tagsHtml) tagsEl.innerHTML = d.tagsHtml;
             });
         },
 
@@ -528,6 +542,25 @@
                 if (e.target === this.overlay) this._closePanel();
             });
 
+            // 添加时钟折叠
+            if (this.addToggle && this.addPanel) {
+                this.addToggle.addEventListener('click', () => {
+                    const expanded = this.addToggle.getAttribute('aria-expanded') === 'true';
+                    if (expanded) {
+                        this.addToggle.setAttribute('aria-expanded', 'false');
+                        this.addPanel.hidden = true;
+                    } else {
+                        this.addToggle.setAttribute('aria-expanded', 'true');
+                        this.addPanel.hidden = false;
+                        setTimeout(() => {
+                            if (this.presetSelect && !this.presetSelect.value) {
+                                this.customInput?.focus();
+                            }
+                        }, 150);
+                    }
+                });
+            }
+
             // 冬夏令时选项：仅手输偏移时生效（选了预设城市则隐藏，IANA 自动支持）
             if (this.presetSelect && this.dstRow) {
                 const syncDstRow = () => { this.dstRow.hidden = !!this.presetSelect.value; };
@@ -627,6 +660,10 @@
                 this.dstOffsetInput.disabled = true;
             }
             if (this.dstHemiSelect) this.dstHemiSelect.disabled = true;
+            if (this.addToggle && this.addPanel) {
+                this.addToggle.setAttribute('aria-expanded', 'false');
+                this.addPanel.hidden = true;
+            }
         },
 
         /** 绑定列表内的事件（名称编辑、删除） */

@@ -111,7 +111,8 @@
             dateFormat: ['cn', 'iso', 'us', 'uk'].includes(v.dateFormat) ? v.dateFormat : 'cn'
         } : undefined),
         sp_bookmarks: sanitizeBookmarks,
-        // sp_history 刻意不进备份（隐私 + 提示文案承诺不含搜索历史）
+        // sp_history（隐私）与 sp_weather_cache_* / sp_location_cache / sp_favicon_cache_*
+        // （可再生缓存）刻意不进备份：白名单未列出即自然排除
         sp_suggestions: bool,
         sp_fallback: (v) => (['baidu', 'bing', 'google'].includes(v) ? v : undefined),
         sp_modifier: (v) => (['ctrlshift', 'ctrl', 'alt', 'none'].includes(v) ? v : undefined),

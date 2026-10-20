@@ -108,3 +108,52 @@ test('autoIconFallbackUrl direct 回退二级域名，两段域名与 google 无
     assert.equal(sb.App.Bookmarks.autoIconFallbackUrl('https://www.example.com/', 'google'), '');
     assert.equal(sb.App.Bookmarks.autoIconFallbackUrl('javascript:alert(1)'), '');
 });
+
+test('_iconCache 缓存读写、来源隔离与过期', () => {
+    const sb = freshApp();
+    const B = sb.App.Bookmarks;
+    assert.equal(B._iconCacheGet('direct', 'a.com'), null);
+    B._iconCacheSet('direct', 'a.com', 'none');
+    assert.equal(B._iconCacheGet('direct', 'a.com'), 'none');
+    // 键含 source：google 来源不受 direct 结果污染
+    assert.equal(B._iconCacheGet('google', 'a.com'), null);
+    // 过期（写入早于 TTL）→ 返回 null 并删除
+    sb.localStorage.setItem(B._iconCacheKey('direct', 'a.com'),
+        JSON.stringify({ s: 'fallback', t: Date.now() - B.ICON_CACHE_TTL - 1000 }));
+    assert.equal(B._iconCacheGet('direct', 'a.com'), null);
+    assert.equal(sb.localStorage.getItem(B._iconCacheKey('direct', 'a.com')), null);
+    // 损坏数据 → null
+    sb.localStorage.setItem(B._iconCacheKey('direct', 'b.com'), 'not-json-object');
+    assert.equal(B._iconCacheGet('direct', 'b.com'), null);
+});
+
+test('autoIconPlan 按缓存返回：none 不出图、fallback 直达二级域名', () => {
+    const sb = freshApp();
+    sb.App.state = { faviconSource: 'direct' };
+    const B = sb.App.Bookmarks;
+    // 未缓存：一级 + 回退属性（vm 沙箱对象与宿主原型不同，逐字段断言）
+    let p = B.autoIconPlan('https://www.example.com/x');
+    assert.equal(p.src, 'https://www.example.com/favicon.ico');
+    assert.equal(p.fallback, 'https://example.com/favicon.ico');
+    assert.equal(p.host, 'www.example.com');
+    // 缓存 none：src/fallback 均空
+    B._iconCacheSet('direct', 'www.example.com', 'none');
+    p = B.autoIconPlan('https://www.example.com/x');
+    assert.equal(p.src, '');
+    assert.equal(p.fallback, '');
+    assert.equal(p.host, 'www.example.com');
+    // 缓存 fallback：直达二级域名，不再尝试一级
+    B._iconCacheSet('direct', 'www.example.com', 'fallback');
+    p = B.autoIconPlan('https://www.example.com/x');
+    assert.equal(p.src, 'https://example.com/favicon.ico');
+    assert.equal(p.fallback, '');
+    assert.equal(p.host, 'www.example.com');
+    assert.equal(p.cached, 'fallback');
+    // 非 http(s) / 非法 URL 不出方案
+    p = B.autoIconPlan('javascript:alert(1)');
+    assert.equal(p.src, '');
+    assert.equal(p.host, '');
+    p = B.autoIconPlan('');
+    assert.equal(p.src, '');
+    assert.equal(p.host, '');
+});

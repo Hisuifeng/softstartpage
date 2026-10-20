@@ -37,6 +37,59 @@
             this.renderMain();
         },
 
+        // ==================== 自动 favicon 结果缓存 ====================
+        // 按「来源|主机名」记住探测结果（ok/fallback/none），避免每次渲染对
+        // 已知失败的站点重复发请求；键含 source，切换来源互不污染。
+        // 属可再生缓存，不进导入导出备份；恢复默认时与天气缓存一并清除。
+        ICON_CACHE_PREFIX: 'sp_favicon_cache_',
+        ICON_CACHE_TTL: 7 * 24 * 3600 * 1000, // 7 天（站点图标偶有更新，留够窗口）
+
+        /** 缓存键：sp_favicon_cache_{source}_{host} */
+        _iconCacheKey(source, host) {
+            return `${this.ICON_CACHE_PREFIX}${source}|${host}`;
+        },
+
+        /** 读缓存；缺失/损坏/过期返回 null（并顺手删除过期项） */
+        _iconCacheGet(source, host) {
+            const key = this._iconCacheKey(source, host);
+            const v = App.Utils.load(key, null);
+            if (!v || typeof v !== 'object' || typeof v.s !== 'string' || typeof v.t !== 'number') return null;
+            if (Date.now() - v.t > this.ICON_CACHE_TTL) {
+                try { localStorage.removeItem(key); } catch (e) { /* 忽略 */ }
+                return null;
+            }
+            return v.s;
+        },
+
+        /** 写缓存（status: ok/fallback/none）；localStorage 满等异常静默忽略 */
+        _iconCacheSet(source, host, status) {
+            if (!host || !status) return;
+            try { App.Utils.save(this._iconCacheKey(source, host), { s: status, t: Date.now() }); } catch (e) { /* 忽略 */ }
+        },
+
+        /**
+         * 综合缓存后的自动图标方案
+         * @returns {{src:string, fallback:string, host:string, cached?:string}}
+         *   · 缓存 none —— src/fallback 均空（渲染首字母，不发请求）
+         *   · 缓存 fallback —— src 直达二级域名地址，跳过已知失败的一级地址
+         *   · 其余 —— src 一级地址 + fallback 回退地址，由 load/error 事件回写缓存
+         */
+        autoIconPlan(url, source) {
+            const s = String(url || '').trim();
+            if (!/^https?:\/\//i.test(s)) return { src: '', fallback: '', host: '' };
+            const srcName = String(source || window.App.state?.faviconSource || 'direct');
+            let host = '';
+            try { host = new URL(s).hostname; } catch (e) { return { src: '', fallback: '', host: '' }; }
+            if (!host) return { src: '', fallback: '', host: '' };
+            const status = this._iconCacheGet(srcName, host);
+            if (status === 'none') return { src: '', fallback: '', host };
+            const fbUrl = this.autoIconFallbackUrl(url, srcName);
+            if (status === 'fallback' && fbUrl) {
+                return { src: fbUrl, fallback: '', host, cached: 'fallback' };
+            }
+            return { src: this.autoIconUrl(url, srcName), fallback: fbUrl, host };
+        },
+
         /**
          * 由书签网址推导自动 favicon URL（M16-v）
          * 来源由 state.faviconSource 决定：
@@ -117,16 +170,20 @@
                 const url = String(bm.url || '');
                 const iconUrl = String(bm.iconUrl || '');
                 const href = url && App.Utils.isSafeUrl(url) ? App.Utils.escapeAttr(url) : '#';
-                // 图标优先级：手动 iconUrl > 自动 favicon（可关闭；direct 失败回退二级域名）> 首字母
+                // 图标优先级：手动 iconUrl > 自动 favicon（可关闭；direct 失败回退二级域名，结果按来源|主机名缓存 7 天）> 首字母
                 const autoEnabled = window.App.state.faviconEnabled !== false;
-                const autoUrl = autoEnabled ? this.autoIconUrl(url) : '';
-                const autoFallback = autoEnabled && !iconUrl ? this.autoIconFallbackUrl(url) : '';
-                const src = iconUrl || autoUrl;
+                const plan = (!iconUrl && autoEnabled) ? this.autoIconPlan(url) : null;
+                const src = iconUrl || (plan ? plan.src : '');
+                const autoFallback = plan ? plan.fallback : '';
+                // data-ficon="source|host" 供 load/error 事件回写结果缓存；data-result 标记缓存命中的 fallback 直达
+                const ficonAttr = plan && plan.host
+                    ? ` data-ficon="${App.Utils.escapeAttr((window.App.state.faviconSource || 'direct') + '|' + plan.host)}"` : '';
+                const resultAttr = plan && plan.cached === 'fallback' ? ' data-result="fallback"' : '';
                 const fallbackAttr = (autoFallback && App.Utils.isSafeUrl(autoFallback) && !iconUrl)
                     ? ` data-fallback="${App.Utils.escapeAttr(autoFallback)}"` : '';
                 // L6：不再使用内联 onerror/onload（CSP 兼容），由 renderMain 后统一 addEventListener
                 const img = src && App.Utils.isSafeUrl(src)
-                    ? `<img src="${App.Utils.escapeAttr(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"${fallbackAttr}>`
+                    ? `<img src="${App.Utils.escapeAttr(src)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"${ficonAttr}${resultAttr}${fallbackAttr}>`
                     : '';
                 return `
                 <a class="bookmark-item" href="${href}"${targetAttr} title="${App.Utils.escapeAttr(name)}">
@@ -141,7 +198,7 @@
             this._bindIconEvents();
         },
 
-        /** L6：图标加载/回退用容器级事件委托（无内联 onerror/onload，CSP 兼容） */
+        /** L6：图标加载/回退用容器级事件委托（无内联 onerror/onload，CSP 兼容）；结果写入 sp_favicon_cache_ 缓存 */
         _bindIconEvents() {
             if (!this.mainContainer || this._iconEventsBound) return;
             this._iconEventsBound = true;
@@ -151,6 +208,13 @@
                 img.style.display = 'block';
                 const fallback = img.previousElementSibling;
                 if (fallback) fallback.style.opacity = '0';
+                // 成功：一级地址记 ok，二级回退记 fallback
+                if (img.dataset.ficon) {
+                    const [srcName, host] = String(img.dataset.ficon).split('|');
+                    if (srcName && host) {
+                        this._iconCacheSet(srcName, host, img.dataset.ftried ? 'fallback' : 'ok');
+                    }
+                }
             }, true);
             this.mainContainer.addEventListener('error', (e) => {
                 const img = e.target;
@@ -160,6 +224,11 @@
                     img.dataset.ftried = '1';
                     img.src = img.dataset.fallback;
                     return;
+                }
+                // 无可再试的地址（或回退也失败）：记 none，后续渲染跳过请求
+                if (img.dataset.ficon) {
+                    const [srcName, host] = String(img.dataset.ficon).split('|');
+                    if (srcName && host) this._iconCacheSet(srcName, host, 'none');
                 }
                 img.style.display = 'none';
             }, true);
@@ -179,9 +248,9 @@
                         <button type="button" class="btn-move" data-move="up" data-idx="${idx}" title="上移" aria-label="上移该书签">${App.Utils.svg('arrowUp')}</button>
                         <button type="button" class="btn-move" data-move="down" data-idx="${idx}" title="下移" aria-label="下移该书签">${App.Utils.svg('arrowDown')}</button>
                     </div>
-                    <input class="settings-input" placeholder="名称" value="${App.Utils.escapeAttr(bm.name||'')}" data-field="name" style="flex:1;">
-                    <input class="settings-input" placeholder="网址" value="${App.Utils.escapeAttr(bm.url||'')}" data-field="url" style="flex:2;">
-                    <input class="settings-input" placeholder="图标(可选)" value="${App.Utils.escapeAttr(bm.iconUrl||'')}" data-field="iconUrl" style="flex:1;">
+                    <input class="settings-input settings-stretch" placeholder="名称" value="${App.Utils.escapeAttr(bm.name||'')}" data-field="name">
+                    <input class="settings-input settings-stretch-2" placeholder="网址" value="${App.Utils.escapeAttr(bm.url||'')}" data-field="url">
+                    <input class="settings-input settings-stretch" placeholder="图标(可选)" value="${App.Utils.escapeAttr(bm.iconUrl||'')}" data-field="iconUrl">
                     <button class="btn-icon-danger" data-idx="${idx}" title="删除">${App.Utils.svg('close')}</button>
                 </div>
             `).join('');

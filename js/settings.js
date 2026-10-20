@@ -7,9 +7,13 @@
     window.App = window.App || {};
     if (!window.App.state) window.App.state = {};
 
-    // 分区高亮框（.section-highlight::before）向外扩出的距离，
+    // 分区高亮框（.settings-group.section-highlight::before）向外扩出的距离，
     // 跳转时需让出这段空间，避免高亮框顶部被滚动口裁掉。
     const SECTION_HIGHLIGHT_OVERHANG = 10;
+    // 框顶额外安全余量：overhang 只让框顶边恰好压在滚动口边界上。
+    // 分区高度含 rem 行高的小数部分，浏览器对 scrollTop 取整/亚像素裁剪时
+    // 顶部边框可能掉出边界（表现为高亮框顶部一条边缺失），故再留出余量。
+    const SECTION_HIGHLIGHT_SLACK = 8;
 
     const Settings = {
         overlay: null,
@@ -146,6 +150,7 @@
 
             this._bindEvents();
             this._initSidebar();
+            this._initSettingsItems();
             this._toggleLocationFields(window.App.state?.weatherSource);
         },
 
@@ -237,10 +242,11 @@
 
         /**
          * 计算滚动定位到指定分区所需的目标 scrollTop。
-         * 让出高亮框的上外扩距离，使高亮框完整可见。
+         * 让出高亮框的上外扩距离（OVERHANG）加安全余量（SLACK），
+         * 使高亮框顶部完整可见且不贴在滚动口边界上。
          */
         _sectionTarget(section) {
-            return Math.max(0, section.offsetTop - SECTION_HIGHLIGHT_OVERHANG);
+            return Math.max(0, section.offsetTop - SECTION_HIGHLIGHT_OVERHANG - SECTION_HIGHLIGHT_SLACK);
         },
 
         /**
@@ -462,12 +468,13 @@
             // 壁纸恢复默认（清除固定/自定义，回到主题默认随机）
             if (window.App.Wallpaper) App.Wallpaper.set('none', '');
 
-            // 清理天气/位置缓存，避免重置后仍显示旧城市的缓存数据
+            // 清理天气/位置/favicon 结果缓存，避免重置后仍复用旧缓存数据
             try {
                 const doomed = [];
                 for (let i = 0; i < localStorage.length; i++) {
                     const k = localStorage.key(i);
-                    if (k && (k.startsWith('sp_weather_cache_') || k === 'sp_location_cache')) doomed.push(k);
+                    if (k && (k.startsWith('sp_weather_cache_') || k === 'sp_location_cache'
+                        || k.startsWith('sp_favicon_cache_'))) doomed.push(k);
                 }
                 doomed.forEach(k => localStorage.removeItem(k));
             } catch (e) { /* 忽略 */ }
@@ -798,7 +805,7 @@
         },
 
         async _clearCustomEngines() {
-            const ok = await App.Dialog.confirm('确定要清空全部自定义搜索引擎吗？（关闭面板时点"取消"可反悔）', '清空自定义引擎');
+            const ok = await App.Dialog.confirm('确定要清空全部自定义搜索引擎吗？此操作不可撤销。', '清空自定义引擎');
             if (!ok) return;
             // M9：只清草稿，保存时提交
             this._enginesDraft = [];
@@ -845,6 +852,55 @@
                 else break;
             }
             this.navItems.forEach(it => it.classList.toggle('active', it.dataset.target === activeId));
+        },
+
+        _initSettingsItems() {
+            const panel = this.body || document.getElementById('settingsPanelBody');
+            if (!panel) return;
+            panel.addEventListener('click', (e) => {
+                const item = e.target.closest('.settings-item');
+                // 只读信息行（settings-item--info）：无交互展开态，不做激活切换
+                if (!item || item.classList.contains('settings-item--info')) return;
+                const target = e.target;
+                if (
+                    target.closest('.settings-item-control') ||
+                    target.closest('button') ||
+                    target.closest('input') ||
+                    target.closest('select') ||
+                    target.closest('label')
+                ) {
+                    if (
+                        target.matches('input[type="checkbox"], input[type="range"], input[type="color"], select') ||
+                        target.closest('button') ||
+                        target.closest('.wallpaper-actions') ||
+                        target.closest('.file-upload-label')
+                    ) {
+                        return;
+                    }
+                }
+                const isActive = item.dataset.active === 'true';
+                panel.querySelectorAll('.settings-item').forEach(i => {
+                    i.dataset.active = 'false';
+                });
+                if (!isActive) {
+                    item.dataset.active = 'true';
+                    item.focus({ preventScroll: true });
+                }
+            });
+
+            panel.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                const item = e.target.closest('.settings-item');
+                if (!item || e.target !== item) return;
+                e.preventDefault();
+                const isActive = item.dataset.active === 'true';
+                panel.querySelectorAll('.settings-item').forEach(i => {
+                    i.dataset.active = 'false';
+                });
+                if (!isActive) {
+                    item.dataset.active = 'true';
+                }
+            });
         },
 
         _bindEvents() {

@@ -162,6 +162,8 @@
                 this.layer.classList.remove('hidden', 'wp-preload-fade');
                 void this.layer.offsetWidth; // 强制重排以重新触发动画
                 this.layer.classList.add('wp-preload-fade');
+                // 可见性在此刻才变化：重刷右上角固定提示条（否则固定按钮不再出现）
+                this._updateHint();
             };
             img.onerror = () => {
                 if (this._preloadToken !== img) return;
